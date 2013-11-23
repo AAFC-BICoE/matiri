@@ -59,12 +59,33 @@ Default sqlite location: $BASE_DESTINATION_DIR/backups.sqlite3.db
 
 Database schema:
 
-```
+```sql
     CREATE TABLE backup_event (id INTEGER PRIMARY KEY, completed int NOT NULL, comments text, host varchar(255) NOT NULL, port int NOT NULL, start_time DATETIME not null, end_time DATETIME not null, user varchar(64), bytes bigint NOT NULL, file text, sha256 char(64) NOT NULL, error default NULL);
     CREATE INDEX backup_start_time on backup(start_time);
     CREATE TABLE database (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, database varchar(255) NOT NULL, file text, start_time DATETIME not null, end_time DATETIME not null, bytes bigint NOT NULL, sha256 char(64) NOT NULL, error default NULL, FOREIGN KEY(backup_id) REFERENCES backup(id));
     CREATE INDEX database_start_time on database(start_time);
 ```
+
+## Perusing database
+
+```
+sqlite> select * from backup_event;
+id|completed|comments|host|port|start_time|end_time|user|bytes|file|sha256|error
+12|0||localhost|3306|2013-11-23 17:23:15|2013-11-23 17:23:15|backups|20480|/home/newtong/backups/2013/11/mysql_backup_2013-11-23_12.tar|6f216d2a4811382b66b25480328b385bab54e7531f73bf2aa5262b00b030017c|
+13|0||localhost|3306|2013-11-23 17:23:26|2013-11-23 17:23:27|backups|20480|/home/newtong/backups/2013/11/mysql_backup_2013-11-23_13.tar|da5721440c8577a3b250232ba2e901350ea9a34876212312a5b9a28206ae6d33|
+14|0||localhost|3306|2013-11-23 17:23:50|2013-11-23 17:23:51|backups|20480|/home/newtong/backups/2013/11/mysql_backup_2013-11-23_14.tar|f2a9b41e4157da803d79cf385db17dad1d273e48b352eba2cd0209eaf90fa2e9|
+15|0||localhost|3306|2013-11-23 17:24:08|2013-11-23 17:24:15|backups|29399040|/home/newtong/backups/2013/11/mysql_backup_2013-11-23_15.tar|8ef6dbdb3537361e48bce1d3eeb3c114d25ebf8d7eb808312384035221f20e32|
+
+sqlite> select * from database where backup_id = 15;
+id|completed|backup_id|database|file|start_time|end_time|bytes|sha256|error
+61|0|15|performance_schema|database__performance_schema.gz|2013-11-23 17:24:09|2013-11-23 17:24:15|1100|2e7ea55832e3fbb62ee1370a1f0b6ffef2415aba79a129b419181195588b6c27|
+62|0|15|information_schema|database__information_schema.gz|2013-11-23 17:24:09|2013-11-23 17:24:15|395504|694688b16377916f31f9dbe2a8647928a6cbb4cd5419767b3335c5ca7e5e5f37|
+63|0|15|mysql|database__mysql.gz|2013-11-23 17:24:09|2013-11-23 17:24:15|142109|a72789bedfdcc73ea419750fd4904fd1c859e175f23be208b58d1c262e45eae5|
+64|0|15|specify_dao_live|database__specify_dao_live.gz|2013-11-23 17:24:09|2013-11-23 17:24:15|28842782|1d91517672bae1ae39294d3e4f819e79eb6d0c4325d9c30d2d78303c34e189cd|
+sqlite> 
+```
+
+
 
 ## TODOs
 0. Command line parameters for backup location and dynamically setting credentials (mysql.sh) script
