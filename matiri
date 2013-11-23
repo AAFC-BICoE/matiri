@@ -1,0 +1,207 @@
+#!/bin/bash
+#
+# matiri: backup mysql databases in parallel, then tar them together; record the info in sqlite3 db (if available)
+#
+# Author: GNewton 2013.10.09 glen.newton@gmail.com
+# Copyright 2013 Government of Canada and Glen Newton
+# Apache v2 License
+#
+set -e
+
+############# Modifiable by command line (not yet: future feature) ###########
+# Right now you need to modify these directly  #
+#
+# Root location of where backups stored: CHANGE THIS!!!
+readonly BASE_DESTINATION_DIR="/home/newtong/backups"
+# This depends more on the server machine: too high and mysqld load goes very high on server;
+readonly PARALLELISM='3'
+readonly MYSQL_USER=$(./mysql.sh user)
+readonly MYSQL_HOST=$(./mysql.sh host)
+readonly MYSQL_PASSWORD=$(./mysql.sh password)
+readonly MYSQL_PORT=$(./mysql.sh port)
+readonly LOG=true
+readonly DESTINATION_TMP_PREFIX='mysql_backup'
+#################
+
+readonly DESTINATION_DIR=${BASE_DESTINATION_DIR}/$(date +%Y)/$(date +%m)
+
+readonly DB_FILE="$BASE_DESTINATION_DIR/backups.sqlite3.db"
+readonly DB_FILE_COPY="$DESTINATION_DIR/backups_copy.sqlite3.db"
+readonly MYSQL_BIN='/usr/bin/mysql'
+readonly LIST_DATABASES='list_mysql_databases_by_size.sql'
+timeStamp=$(date "+%F %H:%M:%S%t%s")
+
+
+function usage(){
+    echo "Backup MySql databases"
+    echo ""
+    echo "Usage: $0 dbName backupFileName"
+    exit 1
+}
+
+function init {
+    # Find location of this script; from http://stackoverflow.com/a/246128/459050
+    SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+	SOURCE="$(readlink "$SOURCE")"
+	[[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+    done
+    readonly SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+    # We move into the directory of where this script is to have all dependencies local
+    cd $SCRIPT_DIR
+    . util.sh
+    . sqlite3.sh
+}
+
+function main {
+    init
+    handleArguments
+
+    log "Creating directory"
+
+    mkdir -p "$DESTINATION_DIR"
+
+    readonly SQLITE_STATUS=$(sqlite_init "$DB_FILE")
+    BACKUP_ID=$(sqlite_get_next_backup_id $DB_FILE)
+    log "Record start of backup"
+    sqlite3_start_backup "$DB_FILE" $BACKUP_ID $MYSQL_USER $MYSQL_HOST $MYSQL_PORT 
+
+    WANTED_DATABASES=()
+    if [ $# -ne 0 ] ; then
+	while test $# -gt 0
+	do
+	    WANTED_DATABASES+=("$1")
+	    shift
+	done
+    fi
+
+    readonly DATE=$(date +%F)
+
+    readonly DESTINATION_TMP="${DESTINATION_TMP_PREFIX}_${DATE}_${BACKUP_ID}"
+    readonly TMPDIR="${DESTINATION_DIR}/${DESTINATION_TMP}"
+    mkdir -p $TMPDIR
+
+    local tmpFile=$(mktemp)
+    IFS=$'\n'
+
+    log "Connecting to mysql: host=${MYSQL_HOST} user=${MYSQL_USER}"
+    set +e
+    DATABASES=( $(${MYSQL_BIN} --defaults-file=${MYSQL_CONFIG} --host=${MYSQL_HOST} --user=${MYSQL_USER} --password=${MYSQL_PASSWORD} --skip-column-names < ${LIST_DATABASES} 2> $tmpFile) )
+    set -e
+
+    if [[ "${#DATABASES[@]}" -eq 0 && -z ${DATABASES[1]} ]]; then
+	FATAL_ERROR=$(cat $tmpFile)
+	FATAL_ERROR="[MySql error] ${FATAL_ERROR}"
+	log $FATAL_ERROR
+	sqlite3_fail_backup $DB_FILE $BACKUP_ID "${FATAL_ERROR}"
+	rmdir $TMPDIR
+	rm $tmpFile
+	exit 42
+    fi
+
+    COUNT=0
+
+    # hash for database ids
+    declare -A ID_DATABASE
+
+    log "Making database:id hash"
+    #Make hash of database ID and database Name
+    DATABASE_ID=$(sqlite_get_next_database_backup_id $DB_FILE)
+    log "START DATABASE_ID=${DATABASE_ID}"
+
+    for DBNAME in ${DATABASES[@]}; do
+	log "Examining database: $DBNAME"
+	if [ $(shouldBackup2 $DBNAME "${WANTED_DATABASES[@]}") == "0" ]; then
+	    log "DATABASE_ID=${DATABASE_ID} DBNAME=${DBNAME}"
+	    ID_DATABASE+=( ["${DBNAME}"]="${DATABASE_ID}")
+	    DATABASE_ID=$((DATABASE_ID+1))
+	fi
+    done
+
+    log "Starting backups"
+    for DBNAME in ${DATABASES[@]}; do
+	DATABASE_ID="${ID_DATABASE[$DBNAME]}"
+	log "DATABASE_ID=${DATABASE_ID} DBNAME=${DBNAME}"
+	if [ $(shouldBackup2 $DBNAME "${WANTED_DATABASES[@]}") == "0" ]; then
+	    log "Starting backup: $DBNAME"
+	    OUTFILENAME=$TMPDIR/database__${DBNAME}
+	    log "database=$DBNAME tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
+	    deleteIfExists ${OUTFILENAME}.gz
+	    deleteIfExists ${OUTFILENAME}.gz.sha256
+	    deleteIfExists ${OUTFILENAME}.gz.meta
+	    sqlite3_start_db_backup $DB_FILE $DATABASE_ID $BACKUP_ID $DBNAME
+            echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
+	fi
+    done| xargs --no-run-if-empty -I{} --max-procs $PARALLELISM bash -c '
+   {
+    trap "echo erk; exit 1" INT TERM;
+   {} || exit 0
+   }'
+
+    for DBNAME in ${DATABASES[@]}; do
+	if [ $(shouldBackup2 $DBNAME "${WANTED_DATABASES[@]}") == "0" ]; then
+	    COUNT=$((COUNT+1))
+	    OUTFILENAME=$TMPDIR/database__${DBNAME}.gz
+	    if [ -e $OUTFILENAME ]; then
+		log "get sha on ${OUTFILENAME}"
+		SHA256=$(get_sha 65  "${OUTFILENAME}.sha256")
+		FILESIZE=$(stat -c%s "${OUTFILENAME}")
+		sqlite3_end_db_backup $DB_FILE "${ID_DATABASE[$DBNAME]}" "database__${DBNAME}.gz" $FILESIZE $SHA256
+	    fi
+	fi
+    done
+
+    if [ "$COUNT" -ne 0 ]; then 
+	log "TMPDIR=$TMPDIR"
+	echo "START: $timeStamp" > $TMPDIR/00database2.meta
+	timeStamp=$(date +%F%t%H:%M:%S%t%s)
+	echo "END: $timeStamp" >> $TMPDIR/00database2.meta
+
+	cd $DESTINATION_DIR
+	cp ${DESTINATION_TMP}/00database2.meta ${TMPDIR}.meta
+	chmod 400 ${TMPDIR}.meta
+	readonly ALL_DB_TAR=${DESTINATION_TMP}.tar
+
+	tar cvf ${DESTINATION_TMP}.tar ${DESTINATION_TMP} > /dev/null
+	chmod 400 ${DESTINATION_TMP}.tar
+
+	sha256sum ${DESTINATION_TMP}.tar > ${DESTINATION_TMP}.tar.sha256
+	chmod 400 ${DESTINATION_TMP}.tar.sha256
+
+	SHA256=$(get_sha 65 ${DESTINATION_TMP}.tar.sha256)
+	FILESIZE=$(stat -c%s "${DESTINATION_TMP}.tar")
+
+	rm -r ${DESTINATION_TMP}
+
+	if sqlite_have_sqlite3; then
+	    log "INFO" "Write records of backup to database"
+	fi
+	sqlite3_end_backup "$DB_FILE" $BACKUP_ID "${DESTINATION_DIR}/${DESTINATION_TMP}.tar" $SHA256 $FILESIZE
+    else
+	sqlite3_end_backup "$DB_FILE" $BACKUP_ID "NULL" "NULL" 0
+    fi
+
+    if [ -e $DB_FILE_COPY ]; then
+	chmod 644 $DB_FILE_COPY
+    fi
+    cp $DB_FILE $DB_FILE_COPY
+    chmod 400 $DB_FILE_COPY
+
+}
+
+function handleArguments {
+    true
+}
+
+################
+main
+################
+
+
+
+
+
+
+

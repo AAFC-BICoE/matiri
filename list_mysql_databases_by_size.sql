@@ -1,0 +1,1 @@
+SELECT table_schema FROM information_schema.TABLES GROUP BY table_schema order by (sum( data_length + index_length ) / 1024 / 1024); 

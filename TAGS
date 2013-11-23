@@ -1,0 +1,48 @@
+
+backup_single_database.sh,447
+usage(11,214
+readonly ERROR_USAGE_1=17,413
+readonly MYSQL_HOST=29,615
+    --comments=comments55,1336
+    --host=host62,1505
+    --max-allowed-packet=packet63,1531
+    --user=user72,1737
+    $DATABASE_NAME | /bin/nice /bin/gzip  -c > $COMPRESSED_BACKUP_FILENAME;73,1764
+    $DATABASE_NAME | /bin/nice /bin/gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "command failed"; exit 73,1764
+TIME_STAMP=82,2098
+
+derek.sh,29
+function waitOnJobs(60,1757
+
+mysql.sh,68
+MYSQL_USER=6,99
+    exit;12,211
+    exit;17,274
+    exit;22,345
+
+sqlite3.sh,535
+function sqlite_have_sqlite3 6,73
+function sqlite_init 12,148
+function sqlite_table_exists 30,480
+function sqlite_create_table 40,734
+function sqlite_get_next_number 52,1559
+function sqlite_get_next_backup_id 66,1836
+function sqlite_get_next_database_backup_id 73,1988
+function sqlite_insert 81,2178
+function sqlite_apply_sql 88,2262
+function sqlite3_start_backup 93,2320
+function sqlite3_end_backup 105,2698
+function sqlite3_start_db_backup 117,3079
+function sqlite3_end_db_backup 128,3481
+function sqlite_date 141,3812
+
+util.sh,224
+function commandExists 2,1
+function thisFunc 6,63
+function parent 10,112
+function expects 15,184
+function test 26,418
+function deleteIfExists 36,549
+function techo 44,653
+function err(52,873
+function get_sha 57,957
