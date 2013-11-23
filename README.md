@@ -58,11 +58,13 @@ Default sqlite location: $BASE_DESTINATION_DIR/backups.sqlite3.db
 * If the backup event has successfully executed, the backup_event is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the tar file are recorded.
 
 Database schema:
+
+```
     CREATE TABLE backup_event (id INTEGER PRIMARY KEY, completed int NOT NULL, comments text, host varchar(255) NOT NULL, port int NOT NULL, start_time DATETIME not null, end_time DATETIME not null, user varchar(64), bytes bigint NOT NULL, file text, sha256 char(64) NOT NULL, error default NULL);
     CREATE INDEX backup_start_time on backup(start_time);
     CREATE TABLE database (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, database varchar(255) NOT NULL, file text, start_time DATETIME not null, end_time DATETIME not null, bytes bigint NOT NULL, sha256 char(64) NOT NULL, error default NULL, FOREIGN KEY(backup_id) REFERENCES backup(id));
     CREATE INDEX database_start_time on database(start_time);
-
+```
 
 ## TODOs
 0. Command line parameters for backup location and dynamically setting credentials (mysql.sh) script
