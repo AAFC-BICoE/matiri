@@ -12,31 +12,43 @@ Features
 
 MySql Credentials
 --------------------
-*matiri* invokes a script called mysql.sh to obtain MySql server host, port number, userid and password.
+*matiri* invokes a script called `mysql.sh` (must be in same directory as *matiri* script) to obtain MySql server host, port number, userid and password.
 A default implementation is supplied but should be modified to be more secure.
 
 Running
 ------------
-1. Alter the mysql.sh to have the right credentials
-2. Alter the *matiri* script to have the appropriate backup destination location directory: $BASE_DESTINATION_DIR
+1. Alter the `mysql.sh` to have the right credentials
+2. Alter the *matiri* script to have the appropriate backup destination location directory: `$BASE_DESTINATION_DIR` in matiri script
 3. Start *matiri*
 
 
 Directory Structure
 --------------------
 All backup files are grouped by month.
-$BASE_DESTINATION_DIR/YYYY/MM
+    `$BASE_DESTINATION_DIR/YYYY/MM`
 
-Four files a produced:
+Four files are produced:
 
-1. mysql_backup_YYYY-MM-DD_ID.tar
-    * tar of backup files (see below)
-2. mysql_backup_YYYY-MM-DD_ID.tar.sha256
+1. `mysql_backup_YYYY-MM-DD_ID.tar`
+    * tar of database backup files (see below)
+2. `mysql_backup_YYYY-MM-DD_ID.tar.sha256`
     *  sha256 of #1
-3. mysql_backup_YYYY-MM-DD_ID.meta
+3. `mysql_backup_YYYY-MM-DD_ID.meta`
     *  Info about the backup (redundant with Sqlite3 information)
-4. mysql_backup_YYYY-MM-DD_ID.err
-    * stderr output from backup 
+4. `mysql_backup_YYYY-MM-DD_ID.err`
+    * stderr output from backup process
+
+## Database Backup files
+
+The above (#1) `tar` file is made up of:
+&nbsp;&nbsp;&nbsp;For each database being backed up, two files are produced:
+
+1. database__DBNAME.gz.
+    * gzip of mysqldump output
+2. database__DBNAME.gz.sha256
+    * SHA256 of #1
+
+
 
 Dependencies
 ----------------
