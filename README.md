@@ -109,6 +109,11 @@ sqlite>
 5. Simple web server app to peruse backup information in Sqlite3 DB
 6. Explanation of the Sqlite3 fields stored.
 
+Name
+---------------
+Named after the [Matiri River](https://en.wikipedia.org/wiki/Matiri_River), New Zealand. 
+I have been very close on several occasions but never have seen the river.
+
 Acknowledgements
 -------------
 Partially developed at Agriculture and Agri-Food Canada, Ottawa, Ontario.
