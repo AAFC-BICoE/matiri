@@ -2,8 +2,8 @@
 ======
 * Parallel MySql backup script storing backup info in Sqlite3 database.
 
-Features
-* **Parallel**: each database on the server to be backed up is done individually, in parallel (level settable)
+**Features:**
+* **Parallel**: each database on the server to be backed up is done separately, in parallel (concurrency settable: default: 3)
 * **Compressed**: Each database backup compressed
 * **Checksummed**: SHA256 of each compressed backup file stored and the archive of all files
 * **Archived**: All database backups tar'ed together into single file
@@ -18,8 +18,9 @@ A default implementation is supplied but should be modified to be more secure.
 Running
 ------------
 1. Alter the `mysql.sh` to have the right credentials
-2. Alter the *matiri* script to have the appropriate backup destination location directory: `$BASE_DESTINATION_DIR` in matiri script
-3. Start *matiri*
+2. Alter the *matiri* script to have the appropriate backup destination location directory: `$BASE_DESTINATION_DIR` default value=`/tmp/backups`
+3 Alter the *matiri* script to have the appropriate concurrency: `$CONCURRENCY_LEVEL`  default value=`3	
+4. Start *matiri*
 
 
 Directory Structure

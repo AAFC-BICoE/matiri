@@ -15,7 +15,7 @@ readonly LOG=false
 # Root location of where backups stored: CHANGE THIS!!!
 readonly BASE_DESTINATION_DIR="/tmp/backups"
 # This depends more on the server machine: too high and mysqld load goes very high on server;
-readonly PARALLELISM='3'
+readonly CONCURRENCY_LEVEL='3'
 readonly MYSQL_USER=$(./mysql.sh user)
 readonly MYSQL_HOST=$(./mysql.sh host)
 readonly MYSQL_PASSWORD=$(./mysql.sh password)
@@ -135,7 +135,7 @@ function main {
 	    sqlite3_start_db_backup $DB_FILE $DATABASE_ID $BACKUP_ID $DBNAME
             echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
 	fi
-    done| xargs --no-run-if-empty -I{} --max-procs $PARALLELISM bash -c '
+    done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
     trap "echo erk; exit 1" INT TERM;
    {} || exit 0
