@@ -1,26 +1,25 @@
-matiri
+*matiri*
 ======
 * Parallel MySql backup script storing backup info in Sqlite3 database.
 
 Features
-* Parallel: each database on the server to be backed up is done individually, in parallel (level settable)
-* Each database backup compressed
-* SHA256 of each compressed backup file stored
-* All database backups tar'ed together into single file
-* SHA256 of single tar file stored
-* Backup information & databases backed-up information stored in Sqlite3 database and metadata file
+* **Parallel**: each database on the server to be backed up is done individually, in parallel (level settable)
+* **Compressed**: Each database backup compressed
+* **Checksummed**: SHA256 of each compressed backup file stored and the archive of all files
+* **Archived**: All database backups tar'ed together into single file
+* **Recorded**: Backup information stored in Sqlite3 database
 
 
 MySql Credentials
 --------------------
-matiri calls a script called mysql.sh to obtain MySql server host, port number, userid and password.
+*matiri* invokes a script called mysql.sh to obtain MySql server host, port number, userid and password.
 A default implementation is supplied but should be modified to be more secure.
 
 Running
 ------------
 1. Alter the mysql.sh to have the right credentials
-2. Alter the matiri script to have the appropriate backup destination location: $BASE_DESTINATION_DIR
-3. Start matiri
+2. Alter the *matiri* script to have the appropriate backup destination location directory: $BASE_DESTINATION_DIR
+3. Start *matiri*
 
 
 Directory Structure
@@ -31,18 +30,18 @@ $BASE_DESTINATION_DIR/YYYY/MM
 Four files a produced:
 
 1. mysql_backup_YYYY-MM-DD_ID.tar
-* tar of backup files (see below)
+    * tar of backup files (see below)
 2. mysql_backup_YYYY-MM-DD_ID.tar.sha256
-*  sha256 of #1
+    *  sha256 of #1
 3. mysql_backup_YYYY-MM-DD_ID.meta
-*  Info about the backup (redundant with Sqlite3 information)
+    *  Info about the backup (redundant with Sqlite3 information)
 4. mysql_backup_YYYY-MM-DD_ID.err
-* stderr output from backup 
+    * stderr output from backup 
 
 Dependencies
 ----------------
-1. Sqlite3 
-2. mysqldump 
+1. [Sqlite3](https://www.sqlite.org/sqlite.html)
+2. [mysqldump](https://dev.mysql.com/doc/refman/5.5/en/mysqldump.html) (Tested on mysqldump  Ver 10.13 Distrib 5.5.34, for Linux (x86_64))
 3. Standard Linux tools (tar, gzip, date, awk, xargs, sha256sum)
 
 
@@ -50,11 +49,11 @@ Sqlite3 Database
 --------------------------
 Default sqlite location: $BASE_DESTINATION_DIR/backups.sqlite3.db
 
-* Each time matiri is run, an entry in the 'backup_event' table is created.
+* Each time *matiri* is run, an entry in the 'backup_event' table is created.
 * The record is added, indicating a backup_event was started, with the 'completed' column set to -999 (not completed)
-* For each of the databases to be backed up
-* * A database record is added before the database backup starts, with the backup_event ID as the forign key 'backup_id'. The 'completed' column set to -999 (not completed).
-* * If this database backup completes successfully, the record is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the backup file are recorded.
+* For each of the databases to be backed up:
+    * * A database record is added before the database backup starts, with the backup_event ID as the forign key 'backup_id'. The 'completed' column set to -999 (not completed).
+    * * If this database backup completes successfully, the record is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the backup file are recorded.
 * If the backup event has successfully executed, the backup_event is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the tar file are recorded.
 
 Database schema:
@@ -66,7 +65,8 @@ Database schema:
     CREATE INDEX database_start_time on database(start_time);
 ```
 
-## Perusing database
+## Perusing Sqlite3 Backup Database
+Using the Sqlite3 [command line tool](https://www.sqlite.org/sqlite.html)
 
 ```
 sqlite> select * from backup_event;
@@ -94,3 +94,7 @@ sqlite>
 3. Alternate compression: {p}bzip2 should be easy;
 4. Scripts to both delete old backups files and remove entries from the Sqlite3 db (keep in sync)
 5. Simple web server app to peruse backup information in Sqlite3 DB
+
+Acknowledgements
+-------------
+Partially developed at Agriculture and Agri-Food Canada, Ottawa, Ontario.

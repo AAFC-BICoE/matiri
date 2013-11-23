@@ -13,7 +13,7 @@ readonly LOG=false
 # Right now you need to modify these directly  #
 #
 # Root location of where backups stored: CHANGE THIS!!!
-readonly BASE_DESTINATION_DIR="/home/newtong/backups"
+readonly BASE_DESTINATION_DIR="/tmp/backups"
 # This depends more on the server machine: too high and mysqld load goes very high on server;
 readonly PARALLELISM='3'
 readonly MYSQL_USER=$(./mysql.sh user)
