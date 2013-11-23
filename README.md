@@ -59,13 +59,13 @@ Dependencies
 
 Sqlite3 Database 
 --------------------------
-Default sqlite location: $BASE_DESTINATION_DIR/backups.sqlite3.db
+Default sqlite location: `$BASE_DESTINATION_DIR/backups.sqlite3.db`
 
-* Each time *matiri* is run, an entry in the 'backup_event' table is created.
-* The record is added, indicating a backup_event was started, with the 'completed' column set to -999 (not completed)
+* Each time *matiri* is run, an entry in the `'backup_event'` table is created.
+* The record is added, indicating a backup_event was started, with the `'completed'` column set to `-999 `(not completed)
 * For each of the databases to be backed up:
-    * * A database record is added before the database backup starts, with the backup_event ID as the forign key 'backup_id'. The 'completed' column set to -999 (not completed).
-    * * If this database backup completes successfully, the record is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the backup file are recorded.
+    * * A database record is added before the database backup starts, with the `backup_event` `id` as the forign key `'backup_id'`. The 'completed' column set to `-999` (not completed).
+    * * If this database backup completes successfully, the record is updated with the `'completed'` column set to `0` (completed), the end_time is set, the size (`'bytes'`) and the SHA256 of the backup file are recorded.
 * If the backup event has successfully executed, the backup_event is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the tar file are recorded.
 
 Database schema:
@@ -106,6 +106,7 @@ sqlite>
 3. Alternate compression: {p}bzip2 should be easy;
 4. Scripts to both delete old backups files and remove entries from the Sqlite3 db (keep in sync)
 5. Simple web server app to peruse backup information in Sqlite3 DB
+6. Explanation of the Sqlite3 fields stored.
 
 Acknowledgements
 -------------
