@@ -29,6 +29,7 @@ All backup files are grouped by month.
 $BASE_DESTINATION_DIR/YYYY/MM
 
 Four files a produced:
+
 1. mysql_backup_YYYY-MM-DD_ID.tar
 * tar of backup files (see below)
 2. mysql_backup_YYYY-MM-DD_ID.tar.sha256
