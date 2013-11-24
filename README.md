@@ -65,17 +65,31 @@ Default sqlite location: `$BASE_DESTINATION_DIR/backups.sqlite3.db`
 * Each time *matiri* is run, an entry in the `'backup_event'` table is created.
 * The record is added, indicating a backup_event was started, with the `'completed'` column set to `-999 `(not completed)
 * For each of the databases to be backed up:
-    * * A database record is added before the database backup starts, with the `backup_event` `id` as the forign key `'backup_id'`. The 'completed' column set to `-999` (not completed).
-    * * If this database backup completes successfully, the record is updated with the `'completed'` column set to `0` (completed), the end_time is set, the size (`'bytes'`) and the SHA256 of the backup file are recorded.
+    * A database record is added before the database backup starts, with the `backup_event` `id` as the forign key `'backup_id'`. The 'completed' column set to `-999` (not completed).
+    * If this database backup completes successfully, the record is updated with the `'completed'` column set to `0` (completed), the end_time is set, the size (`'bytes'`) and the SHA256 of the backup file are recorded.
 * If the backup event has successfully executed, the backup_event is updated with the 'completed' column set to 0 (completed), the end_time is set, the size ('bytes') and the SHA256 of the tar file are recorded.
 
 Database schema:
 
 ```sql
-    CREATE TABLE backup_event (id INTEGER PRIMARY KEY, completed int NOT NULL, comments text, host varchar(255) NOT NULL, port int NOT NULL, start_time DATETIME not null, end_time DATETIME not null, user varchar(64), bytes bigint NOT NULL, file text, sha256 char(64) NOT NULL, error default NULL);
+
+    CREATE TABLE backup_event (id INTEGER PRIMARY KEY, completed int NOT NULL, comments text, 
+           host varchar(255) NOT NULL, port int NOT NULL, 
+           start_time DATETIME not null, end_time DATETIME not null, 
+           user varchar(64), bytes bigint NOT NULL, file text, sha256 char(64) NOT NULL, 
+           error default NULL);
+
+
+    CREATE TABLE database (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, 
+           database varchar(255) NOT NULL, file text, 
+           start_time DATETIME not null, end_time DATETIME not null, 
+           bytes bigint NOT NULL, sha256 char(64) NOT NULL, 
+           error default NULL, FOREIGN KEY(backup_id) REFERENCES backup(id));
+
     CREATE INDEX backup_start_time on backup(start_time);
-    CREATE TABLE database (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, database varchar(255) NOT NULL, file text, start_time DATETIME not null, end_time DATETIME not null, bytes bigint NOT NULL, sha256 char(64) NOT NULL, error default NULL, FOREIGN KEY(backup_id) REFERENCES backup(id));
+
     CREATE INDEX database_start_time on database(start_time);
+
 ```
 
 ## Perusing Sqlite3 Backup Database
