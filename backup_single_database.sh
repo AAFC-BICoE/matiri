@@ -51,8 +51,6 @@ echo "BACKUP_FILE:  $COMPRESSED_BACKUP_FILENAME" >> ${BACKUP_FILE_NAME}.meta
 deleteIfExists ${BACKUP_FILE_NAME}
 deleteIfExists ${COMPRESSED_BACKUP_FILENAME}
 
-echo $DB_PORT
-
 log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPRESSED_BACKUP_FILENAME"
 { /bin/nice -19 /usr/bin/mysqldump \
     --add-locks \

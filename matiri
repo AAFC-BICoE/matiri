@@ -185,7 +185,6 @@ function main {
         echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
-    trap "echo erk; exit 1" INT TERM;
    {} || exit 0
    }'
 
