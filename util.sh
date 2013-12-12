@@ -50,8 +50,8 @@ function deleteIfExists {
     fi
 }
 
-readonly LOG_INFO="INFO: "
-readonly LOG_ERROR="ERROR: "
+# readonly LOG_INFO="INFO: "
+# readonly LOG_ERROR="ERROR: "
 
 function log {
     if [ $LOG == true ]; then
@@ -73,31 +73,10 @@ function get_sha {
     echo $(colrm $1 < $2)
 }
 
-# $1=this database; $2=WANTED_DATABASES_ARRAY
-function shouldBackup {
+
+function onBackupList {
     if [ $# -eq 1 ]; then
-	echo "0"
-	return
-    fi
-    DATABASE=$1
-    shift
-
-    WANTED_DBS=("${@}")
-    for WANTED_DB in "${WANTED_DBS[@]}"   # or simply "for i; do"
-    do
-	if [ "$WANTED_DB" == "$DATABASE" ]; then
-	    echo "0"
-	    return
-	fi
-    done
-
-    echo "1"
-}
-
-# $1=this database; $2=WANTED_DATABASES_ARRAY
-function shouldBackup2 {
-    if [ $# -eq 1 ]; then
-	echo "0"
+	echo "2"
 	return
     fi
     DATABASE=$1
@@ -114,3 +93,35 @@ function shouldBackup2 {
     echo "1"
     return
 }
+
+function onDoNotBackupList {
+    if [ $# -eq 1 ]; then
+	echo "2"
+	return
+    fi
+    DATABASE=$1
+    shift
+
+    UNWANTED_DBS=("${@}")
+    for UNWANTED_DB in "${UNWANTED_DBS[@]}"   # or simply "for i; do"
+    do
+	if [ "$UNWANTED_DB" == "$DATABASE" ]; then
+	    echo "0"
+	    return
+	fi
+    done
+    echo "1"
+    return
+}
+
+
+function should_backup {
+    if [ $1 == "0" ] || [ $1 == "2" -a $2 == "2" ] || [ $1 == "2" -a $2 == 1 ]; then
+	echo "true"
+    else
+	echo "false"
+    fi
+}
+
+
+

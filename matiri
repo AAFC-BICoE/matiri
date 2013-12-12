@@ -7,19 +7,22 @@
 # Apache v2 License
 #
 set -e
-readonly LOG=false
+readonly LOG=true
 
 ############# Modifiable by command line (not yet: future feature) ###########
 # Right now you need to modify these directly  #
 #
 # Root location of where backups stored: CHANGE THIS!!!
 readonly BASE_DESTINATION_DIR="/tmp/backups"
+#
+# Only one or none of these 2 can be set
+readonly EXCLUDE=(events)
+readonly INCLUDE=()
+
+export ERROR_MESSAGE=""
+
 # This depends more on the server machine: too high and mysqld load goes very high on server;
 readonly CONCURRENCY_LEVEL='3'
-readonly MYSQL_USER=$(./mysql.sh user)
-readonly MYSQL_HOST=$(./mysql.sh host)
-readonly MYSQL_PASSWORD=$(./mysql.sh password)
-readonly MYSQL_PORT=$(./mysql.sh port)
 
 readonly DESTINATION_TMP_PREFIX='mysql_backup'
 #################
@@ -34,10 +37,33 @@ timeStamp=$(date "+%F %H:%M:%S%t%s")
 
 
 function usage(){
+    log
+    if [[ $# -ne 0 ]]; then
+	echo "...Error: ${1}"
+    fi
     echo "Backup MySql databases"
     echo ""
     echo "Usage: $0 dbName backupFileName"
     exit 1
+}
+
+function verify_exclude_include {
+    nexclude=$1
+    ninclude=$2
+    if [ $nexclude == 0 -a $ninclude == 0 ]; then
+	echo 0
+	return
+    fi
+    if [ $nexclude != 0 -a $ninclude != 0 ]; then
+	echo "Either one or none of EXCLUDE and INCLUDE can be set (not both)"
+	return
+    fi
+    echo 0
+}
+
+function verify_config {
+    log " exclude=[${EXCLUDE[*]}] include=[${INCLUDE[*]}] "
+    echo $(verify_exclude_include ${#EXCLUDE[@]} ${#INCLUDE[@]})
 }
 
 function init {
@@ -56,9 +82,22 @@ function init {
     . sqlite3.sh
 }
 
+
 function main {
     init
-    handleArguments
+    handle_arguments
+    readonly MYSQL_USER=$(./mysql.sh user)
+    readonly MYSQL_HOST=$(./mysql.sh host)
+    readonly MYSQL_PASSWORD=$(./mysql.sh password)
+    readonly MYSQL_PORT=$(./mysql.sh port)
+
+    vc=$(verify_config)
+    log "vc= -$vc-"
+
+    if [[ $vc != "0" ]]; then
+	log "usage"
+	usage "$vc"
+    fi
 
     log "Creating directory"
 
@@ -111,46 +150,53 @@ function main {
     #Make hash of database ID and database Name
     DATABASE_ID=$(sqlite_get_next_database_backup_id $DB_FILE)
     log "START DATABASE_ID=${DATABASE_ID}"
-
+    
+    WANTED=()
     for DBNAME in ${DATABASES[@]}; do
 	log "Examining database: $DBNAME"
-	if [ $(shouldBackup2 $DBNAME "${WANTED_DATABASES[@]}") == "0" ]; then
-	    log "DATABASE_ID=${DATABASE_ID} DBNAME=${DBNAME}"
+
+	obl=$(onBackupList $DBNAME ${INCLUDE[@]})
+	onl=$(onDoNotBackupList $DBNAME ${EXCLUDE[@]})
+	shouldBackup=$(should_backup $obl $onl)
+	if [[ $shouldBackup == "true" ]]; then
+	    log "BACKUP: $DBNAME"
 	    ID_DATABASE+=( ["${DBNAME}"]="${DATABASE_ID}")
 	    DATABASE_ID=$((DATABASE_ID+1))
+	    WANTED+=($DBNAME)
+	else
+	    log "NO BACKUP: $DBNAME"
 	fi
     done
 
+    ###
+    #return
+
     log "Starting backups"
-    for DBNAME in ${DATABASES[@]}; do
+    for DBNAME in ${WANTED[@]}; do
 	DATABASE_ID="${ID_DATABASE[$DBNAME]}"
 	log "DATABASE_ID=${DATABASE_ID} DBNAME=${DBNAME}"
-	if [ $(shouldBackup2 $DBNAME "${WANTED_DATABASES[@]}") == "0" ]; then
-	    log "Starting backup: $DBNAME"
-	    OUTFILENAME=$TMPDIR/database__${DBNAME}
-	    log "database=$DBNAME tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
-	    deleteIfExists ${OUTFILENAME}.gz
-	    deleteIfExists ${OUTFILENAME}.gz.sha256
-	    deleteIfExists ${OUTFILENAME}.gz.meta
-	    sqlite3_start_db_backup $DB_FILE $DATABASE_ID $BACKUP_ID $DBNAME
-            echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
-	fi
+	log "Starting backup: $DBNAME"
+	OUTFILENAME=$TMPDIR/database__${DBNAME}
+	log "database=$DBNAME tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
+	deleteIfExists ${OUTFILENAME}.gz
+	deleteIfExists ${OUTFILENAME}.gz.sha256
+	deleteIfExists ${OUTFILENAME}.gz.meta
+	sqlite3_start_db_backup $DB_FILE $DATABASE_ID $BACKUP_ID $DBNAME
+        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
     trap "echo erk; exit 1" INT TERM;
    {} || exit 0
    }'
 
-    for DBNAME in ${DATABASES[@]}; do
-	if [ $(shouldBackup2 $DBNAME "${WANTED_DATABASES[@]}") == "0" ]; then
-	    COUNT=$((COUNT+1))
-	    OUTFILENAME=$TMPDIR/database__${DBNAME}.gz
-	    if [ -e $OUTFILENAME ]; then
-		log "get sha on ${OUTFILENAME}"
-		SHA256=$(get_sha 65  "${OUTFILENAME}.sha256")
-		FILESIZE=$(stat -c%s "${OUTFILENAME}")
-		sqlite3_end_db_backup $DB_FILE "${ID_DATABASE[$DBNAME]}" "database__${DBNAME}.gz" $FILESIZE $SHA256
-	    fi
+    for DBNAME in ${WANTED[@]}; do
+	COUNT=$((COUNT+1))
+	OUTFILENAME=$TMPDIR/database__${DBNAME}.gz
+	if [ -e $OUTFILENAME ]; then
+	    log "get sha on ${OUTFILENAME}"
+	    SHA256=$(get_sha 65  "${OUTFILENAME}.sha256")
+	    FILESIZE=$(stat -c%s "${OUTFILENAME}")
+	    sqlite3_end_db_backup $DB_FILE "${ID_DATABASE[$DBNAME]}" "database__${DBNAME}.gz" $FILESIZE $SHA256
 	fi
     done
 
@@ -192,7 +238,7 @@ function main {
 
 }
 
-function handleArguments {
+function handle_arguments {
     true
 }
 
