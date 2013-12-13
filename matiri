@@ -22,7 +22,7 @@ readonly INCLUDE=()
 export ERROR_MESSAGE=""
 
 # This depends more on the server machine: too high and mysqld load goes very high on server;
-readonly CONCURRENCY_LEVEL='3'
+readonly CONCURRENCY_LEVEL=$(echo `nproc=$(expr $(nproc) + 1); echo $(expr $nproc / 2)`)
 
 readonly DESTINATION_TMP_PREFIX='mysql_backup'
 #################
