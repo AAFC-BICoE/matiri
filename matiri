@@ -35,6 +35,7 @@ readonly MYSQL_BIN='/usr/bin/mysql'
 readonly LIST_DATABASES='list_mysql_databases_by_size.sql'
 timeStamp=$(date "+%F %H:%M:%S%t%s")
 
+readonly INTER_DUMP_DELAY=5
 
 function usage(){
     log
@@ -67,6 +68,7 @@ function verify_config {
 }
 
 function init {
+
     # Find location of this script; from http://stackoverflow.com/a/246128/459050
     SOURCE="${BASH_SOURCE[0]}"
     while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -79,6 +81,12 @@ function init {
     # We move into the directory of where this script is to have all dependencies local
     cd $SCRIPT_DIR
     . util.sh
+    log "check dependencies"
+    check_dependencies sleep gzip sha256sum nice mysqldump date readlink sqlite3 stat util.sh sqlite2.sh 
+    if [ ! $? ]; then
+	usage
+    fi
+    log "check dependencies done"
     . sqlite3.sh
 }
 
@@ -183,6 +191,7 @@ function main {
 	deleteIfExists ${OUTFILENAME}.gz.meta
 	sqlite3_start_db_backup $DB_FILE $DATABASE_ID $BACKUP_ID $DBNAME
         echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
+	sleep $INTER_DUMP_DELAY
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
    {} || exit 0

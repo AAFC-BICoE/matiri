@@ -8,8 +8,13 @@
 # Except for code from http://google-styleguide.googlecode.com/svn/trunk/shell.xml?showone=STDOUT_vs_STDERR#STDOUT_vs_STDERR v1.26
 #  - function err()
 
-function commandExists {
-    command -v $1 >/dev/null 2>&1
+function command_exists {
+    commandName="$1"
+    fullPath=$(command -v $commandName)
+    if [[ $? == 0 ]] && [[ -x $fullPath ]]; then
+	return 0
+    fi
+    return 42
 }
 
 function thisFunc {
@@ -123,5 +128,7 @@ function should_backup {
     fi
 }
 
-
+function check_dependencies {
+    return 0
+}
 

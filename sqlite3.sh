@@ -1,6 +1,6 @@
 
 readonly BACKUP_TABLE='backup_event'
-readonly DB_TABLE='database'
+readonly DB_TABLE='db_dump'
 
 readonly NOT_COMPLETED="-999"
 readonly COMPLETED="0"
@@ -8,7 +8,7 @@ readonly COMPLETED="0"
 HAVE_SQLITE=false
 
 function sqlite_have_sqlite3 {
-    if $HAVE_SQLITE == true || commandExists sqlite3; then
+    if $HAVE_SQLITE == true || command_exists sqlite3; then
 	HAVE_SQLITE=true
 	return 0
     else
@@ -57,7 +57,7 @@ function sqlite_create_table {
 	$(sqlite3 $DB "CREATE TABLE $BACKUP_TABLE (id INTEGER PRIMARY KEY, completed int NOT NULL, comments text, host varchar(255) NOT NULL, port int NOT NULL, start_time DATETIME not null, end_time DATETIME not null, user varchar(64), bytes bigint NOT NULL, file text, sha256 char(64) NOT NULL, error default NULL);")
 	$(sqlite3 $DB "CREATE INDEX ${BACKUP_TABLE}_start_time on ${BACKUP_TABLE}(start_time)")
 	
-	$(sqlite3 $DB "CREATE TABLE $DB_TABLE (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, database varchar(255) NOT NULL, file text, start_time DATETIME not null, end_time DATETIME not null, bytes bigint NOT NULL, sha256 char(64) NOT NULL, error default NULL, FOREIGN KEY(backup_id) REFERENCES backup(id));")
+	$(sqlite3 $DB "CREATE TABLE $DB_TABLE (id INTEGER PRIMARY KEY,  backup_id INTEGER, completed int NOT NULL, database varchar(255) NOT NULL, file text, start_time DATETIME not null, end_time DATETIME not null, bytes bigint NOT NULL, sha256 char(64) NOT NULL, error default NULL, FOREIGN KEY(backup_id) REFERENCES backup(id));")
 	$(sqlite3 $DB "CREATE INDEX ${DB_TABLE}_start_time on ${DB_TABLE}(start_time);")
     fi
 }
