@@ -1,4 +1,9 @@
-
+# matiri: backup mysql databases in parallel, then tar them together; record the info in sqlite3 db (if available)
+#
+# Author: GNewton 2013.10.09 glen.newton@gmail.com
+# Copyright 2013 Government of Canada and Glen Newton
+# Apache v2 License
+#
 readonly BACKUP_TABLE='backup_event'
 readonly DB_TABLE='db_dump'
 
