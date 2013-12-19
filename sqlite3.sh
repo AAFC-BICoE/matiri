@@ -10,7 +10,17 @@ readonly DB_TABLE='db_dump'
 readonly NOT_COMPLETED="-999"
 readonly COMPLETED="0"
 
+readonly LOCK_FILE='/tmp/matiri.lock'
+
 HAVE_SQLITE=false
+
+function sqliteAcquireLock {
+    acquireLock "$LOCK_FILE"
+}
+
+function sqliteReleaseLock {
+    releaseLock "$LOCK_FILE"
+}
 
 function sqlite_have_sqlite3 {
     if $HAVE_SQLITE == true || command_exists sqlite3; then
@@ -121,10 +131,11 @@ function sqlite_apply_sql {
 function sqlite3_start_backup {
     if sqlite_have_sqlite3; then
 	local DB="$1"
+	local USER="$2" 
+	local HOST="$3"
+	local PORT="$4"
+
 	local PID="$2"
-	local USER="$3" 
-	local HOST="$4"
-	local PORT="$5"
 	
 	readonly START_DATE=$(sqlite_date)
 	SQL="insert into ${BACKUP_TABLE} (id, completed, host, port, user, start_time, end_time, bytes, sha256) VALUES (${PID}, $NOT_COMPLETED, \"${HOST}\", ${PORT}, \"${USER}\", datetime('now','localtime'), "0", 0, \"\"); "

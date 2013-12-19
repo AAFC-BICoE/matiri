@@ -112,9 +112,9 @@ function main {
     mkdir -p "$DESTINATION_DIR"
 
     readonly SQLITE_STATUS=$(sqlite_init "$DB_FILE")
-    BACKUP_ID=$(sqlite_get_next_backup_id $DB_FILE)
+    //BACKUP_ID=$(sqlite_get_next_backup_id $DB_FILE)
     log "Record start of backup"
-    sqlite3_start_backup "$DB_FILE" $BACKUP_ID $MYSQL_USER $MYSQL_HOST $MYSQL_PORT 
+    BACKUP_ID=$(sqlite3_start_backup "$DB_FILE" $MYSQL_USER $MYSQL_HOST $MYSQL_PORT)
 
     WANTED_DATABASES=()
     if [ $# -ne 0 ] ; then

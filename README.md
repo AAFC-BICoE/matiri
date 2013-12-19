@@ -80,7 +80,7 @@ Database schema:
            error default NULL);
 
 
-    CREATE TABLE database (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, 
+    CREATE TABLE db_dump (id INTEGER PRIMARY KEY,  completed int NOT NULL, backup_id INTEGER, 
            database varchar(255) NOT NULL, file text, 
            start_time DATETIME not null, end_time DATETIME not null, 
            bytes bigint NOT NULL, sha256 char(64) NOT NULL, 
@@ -88,7 +88,7 @@ Database schema:
 
     CREATE INDEX backup_start_time on backup(start_time);
 
-    CREATE INDEX database_start_time on database(start_time);
+    CREATE INDEX database_start_time on db_dump(start_time);
 
 ```
 
@@ -103,7 +103,7 @@ id|completed|comments|host|port|start_time|end_time|user|bytes|file|sha256|error
 14|0||localhost|3306|2013-11-23 17:23:50|2013-11-23 17:23:51|backups|20480|/home/newtong/backups/2013/11/mysql_backup_2013-11-23_14.tar|f2a9b41e4157da803d79cf385db17dad1d273e48b352eba2cd0209eaf90fa2e9|
 15|0||localhost|3306|2013-11-23 17:24:08|2013-11-23 17:24:15|backups|29399040|/home/newtong/backups/2013/11/mysql_backup_2013-11-23_15.tar|8ef6dbdb3537361e48bce1d3eeb3c114d25ebf8d7eb808312384035221f20e32|
 
-sqlite> select * from database where backup_id = 15;
+sqlite> select * from db_dump where backup_id = 15;
 id|completed|backup_id|database|file|start_time|end_time|bytes|sha256|error
 61|0|15|performance_schema|database__performance_schema.gz|2013-11-23 17:24:09|2013-11-23 17:24:15|1100|2e7ea55832e3fbb62ee1370a1f0b6ffef2415aba79a129b419181195588b6c27|
 62|0|15|information_schema|database__information_schema.gz|2013-11-23 17:24:09|2013-11-23 17:24:15|395504|694688b16377916f31f9dbe2a8647928a6cbb4cd5419767b3335c5ca7e5e5f37|
@@ -113,6 +113,11 @@ sqlite>
 ```
 
 
+Testing
+---------------
+Uses bats https://github.com/sstephenson/bats to test bash
+1. `cd tests`
+2. `./run.sh`  (Does a git clone of `bats` and installs in `test/bats-install`
 
 ## TODOs
 0. Command line parameters for backup location and dynamically setting credentials (mysql.sh) script

@@ -59,8 +59,11 @@ function deleteIfExists {
 # readonly LOG_ERROR="ERROR: "
 
 function log {
-    if [ $LOG == true ]; then
-	echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]  ($(parent))    $@" >&2
+
+    if [ ! -z $LOG ]; then
+	if [ "$LOG" == "true" ]; then
+	    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]  ($(parent))    $@" >&2
+	fi
     fi
 }
 
@@ -132,3 +135,44 @@ function check_dependencies {
     return 0
 }
 
+function acquire_lock {
+    #parent
+    local lock_file="$1"
+    if [ -z $lock_file ]; then
+	log "Error: no lockfile argument"
+	return 42
+    fi
+    log "Trying to acquire lock on file [${lock_file}]"
+    set +e
+    lockfile -r 1 $lock_file &> /tmp/foo3_$$
+    #foobar
+    is_locked=$?
+    set -e
+    log "lockfile exit status=${is_locked}"
+    if [[ $is_locked == 0 ]]; then
+	log "Locked $1" 1>&2
+    else
+	log "FAILED Locked $1" 1>&2
+	local lock_error=`cat /tmp/foo3_$$`
+	log "lock error: \"$lock_error\""
+    fi
+    return $is_locked
+}
+
+
+function release_lock {
+    local lock_file="$1"
+    if [ -z $lock_file ]; then
+	log "Error: no lockfile argument"
+	return 42
+    fi
+    log "Releasing $lock_file" 1>&2
+    rm -rf "$lock_file"
+    is_unlocked=$?
+    log "Released $lock_file" 1>&2
+    return $?
+}
+
+function foobar {
+    return 0
+}
