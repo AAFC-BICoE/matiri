@@ -81,6 +81,20 @@ function init {
     # We move into the directory of where this script is to have all dependencies local
     cd $SCRIPT_DIR
     . util.sh
+
+    # mysql.sh must be file mode 700
+    readonly stat=$(/usr/bin/stat -c %a mysql.sh)
+    if [ ! $? ]; then
+	log "stat failed for mysql.sh: either /usr/bin/stat is missing or problem with mysql.sh"
+	usage
+    fi
+
+    if [ "$stat" != "700" ]; then
+	log "mysql.sh is not file mode 700; it is $stat"
+	usage
+    fi
+
+
     log "check dependencies"
     check_dependencies sleep gzip sha256sum nice mysqldump date readlink sqlite3 stat util.sh sqlite2.sh 
     if [ ! $? ]; then
