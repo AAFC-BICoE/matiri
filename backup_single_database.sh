@@ -52,7 +52,7 @@ deleteIfExists ${BACKUP_FILE_NAME}
 deleteIfExists ${COMPRESSED_BACKUP_FILENAME}
 
 log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPRESSED_BACKUP_FILENAME"
-{ /bin/nice -19 /usr/bin/mysqldump \
+{ /bin/nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(/usr/bin/mysqldump \
     --add-locks \
     --comments=0 \
     --compact \
@@ -73,7 +73,7 @@ log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPR
     --skip-dump-date \
     --triggers \
     --user=${DB_USER} \
-    $DATABASE_NAME | /bin/nice /bin/gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "command failed"; exit 1; }
+    $DATABASE_NAME) <(echo "SET FOREIGN_KEY_CHECKS=1;") | /bin/nice /bin/gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "command failed"; exit 1; }
 
 # Verify gzip OK
 /bin/gzip --test $COMPRESSED_BACKUP_FILENAME
