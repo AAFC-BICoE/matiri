@@ -9,7 +9,9 @@
 #  - function err()
 
 function command_exists {
+    local commandName
     commandName="$1"
+    local fullPath
     fullPath=$(command -v $commandName)
     if [[ $? == 0 ]] && [[ -x $fullPath ]]; then
 	return 0
@@ -27,8 +29,10 @@ function parent {
 
 # $1=expected; $2=actual
 function expects {
-    local readonly EXPECTED=$1
-    local readonly ACTUAL=$2
+    local readonly EXPECTED
+    EXPECTED=$1
+    local readonly ACTUAL
+    ACTUAL=$2
     if [ $EXPECTED -eq $ACTUAL ]; then
 	return 0
     fi
@@ -39,6 +43,7 @@ function expects {
 
 function test {
     "$@"
+    local status
     status=$?
     if [ $status -ne 0 ]
     then
@@ -48,6 +53,7 @@ function test {
 }
 
 function deleteIfExists {
+    local filename
     filename="$1"
     if [ -e $filename ]
     then
@@ -84,9 +90,11 @@ function onBackupList {
 	echo "2"
 	return
     fi
+    local DATABASE
     DATABASE=$1
     shift
 
+    local WANTED_DBS
     WANTED_DBS=("${@}")
     for WANTED_DB in "${WANTED_DBS[@]}"   # or simply "for i; do"
     do
@@ -104,9 +112,11 @@ function onDoNotBackupList {
 	echo "2"
 	return
     fi
+    local DATABASE
     DATABASE=$1
     shift
 
+    local UNWANTED_DBS
     UNWANTED_DBS=("${@}")
     for UNWANTED_DB in "${UNWANTED_DBS[@]}"   # or simply "for i; do"
     do
@@ -129,6 +139,17 @@ function should_backup {
 }
 
 function check_dependencies {
+    local DEPS
+    DEPS=("${@}")
+    local hasAllDeps
+    hasAllDeps=true
+    for cmd in ${DEPS[@]}; do
+	hash $cmd 2>/dev/null || { echo >&2 "ERROR: dependency \"$cmd\" is NOT in PATH."; hasAllDeps=false; }
+    done
+    if ! $hasAllDeps ; then
+	echo >&2 "ERROR: Missing dependencies.  Aborting"
+	return 42
+    fi
     return 0
 }
 

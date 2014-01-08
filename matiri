@@ -7,7 +7,9 @@
 # Apache v2 License
 #
 set -e
-readonly LOG=true
+readonly LOG=false
+
+readonly DEPENDENCIES=(tar xargs nproc date readlink)
 
 ############# Modifiable by command line (not yet: future feature) ###########
 # Right now you need to modify these directly  #
@@ -49,7 +51,9 @@ function usage(){
 }
 
 function verify_exclude_include {
+    local nexclude
     nexclude=$1
+    local ninclude
     ninclude=$2
     if [ $nexclude == 0 -a $ninclude == 0 ]; then
 	echo 0
@@ -82,6 +86,13 @@ function init {
     cd $SCRIPT_DIR
     . util.sh
 
+    log "check dependencies"
+    check_dependencies ${DEPENDENCIES[@]}
+    if [ ! $? ]; then
+	usage
+    fi
+    log "check dependencies done"
+
     # mysql.sh must be file mode 700
     readonly stat=$(/usr/bin/stat -c %a mysql.sh)
     if [ ! $? ]; then
@@ -94,13 +105,6 @@ function init {
 	usage
     fi
 
-
-    log "check dependencies"
-    check_dependencies sleep gzip sha256sum nice mysqldump date readlink sqlite3 stat util.sh sqlite2.sh 
-    if [ ! $? ]; then
-	usage
-    fi
-    log "check dependencies done"
     . sqlite3.sh
 }
 
@@ -145,7 +149,8 @@ function main {
     readonly TMPDIR="${DESTINATION_DIR}/${DESTINATION_TMP}"
     mkdir -p $TMPDIR
 
-    local tmpFile=$(mktemp)
+    local tmpFile
+    tmpFile=$(mktemp)
     IFS=$'\n'
 
     log "Connecting to mysql: host=${MYSQL_HOST} user=${MYSQL_USER}"
@@ -274,7 +279,7 @@ function handle_arguments {
 }
 
 ################
-main
+main $@
 ################
 
 

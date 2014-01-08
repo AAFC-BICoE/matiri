@@ -44,9 +44,9 @@ Four files are produced:
 The above (#1) `tar` file is made up of:
 &nbsp;&nbsp;&nbsp;For each database being backed up, two files are produced:
 
-1. database__DBNAME.gz.
+1. database__DBNAME.sql.gz
     * gzip of mysqldump output
-2. database__DBNAME.gz.sha256
+2. database__DBNAME.sql.gz.sha256
     * SHA256 of #1
 
 
