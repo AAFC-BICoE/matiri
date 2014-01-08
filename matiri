@@ -186,20 +186,21 @@ function main {
 	    DATABASE_ID=$((DATABASE_ID+1))
 	    WANTED+=($DBNAME)
 	else
-	    log "NO BACKUP: $DBNAME"
+	    log "NOT TO BACKUP: $DBNAME"
 	fi
     done
 
     ###
     #return
 
-    log "Starting backups"
+    log "------- STARTING BACKUPS ------"
+    DB_COUNT=0
     for DBNAME in ${WANTED[@]}; do
+	DB_COUNT=$((DB_COUNT+1))
+	log "   ------- STARTING BACKUP ${DB_COUNT}/${#WANTED[@]}------ DBNAME=${DBNAME}    DATABASE_ID=${DATABASE_ID} "
 	DATABASE_ID="${ID_DATABASE[$DBNAME]}"
-	log "DATABASE_ID=${DATABASE_ID} DBNAME=${DBNAME}"
-	log "Starting backup: $DBNAME"
-	OUTFILENAME=$TMPDIR/database__${DBNAME}
-	log "database=$DBNAME tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
+	OUTFILENAME=$TMPDIR/database__${DBNAME}.sql
+	log "     ------- tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
 	deleteIfExists ${OUTFILENAME}.gz
 	deleteIfExists ${OUTFILENAME}.gz.sha256
 	deleteIfExists ${OUTFILENAME}.gz.meta
@@ -211,17 +212,25 @@ function main {
    {} || exit 0
    }'
 
+    log "------- STARTING CLEANUP ------"
+    DB_COUNT=0
     for DBNAME in ${WANTED[@]}; do
+	DB_COUNT=$((DB_COUNT+1))
+	log "   ------- STARTING CLEANUP ${DB_COUNT}/${#WANTED[@]}------"
 	COUNT=$((COUNT+1))
-	OUTFILENAME=$TMPDIR/database__${DBNAME}.gz
+	OUTFILENAME=$TMPDIR/database__${DBNAME}.sql.gz
 	if [ -e $OUTFILENAME ]; then
-	    log "get sha on ${OUTFILENAME}"
+	    log "Get SHA256 for ${OUTFILENAME}"
 	    SHA256=$(get_sha 65  "${OUTFILENAME}.sha256")
 	    FILESIZE=$(stat -c%s "${OUTFILENAME}")
-	    sqlite3_end_db_backup $DB_FILE "${ID_DATABASE[$DBNAME]}" "database__${DBNAME}.gz" $FILESIZE $SHA256
+	    sqlite3_end_db_backup $DB_FILE "${ID_DATABASE[$DBNAME]}" "database__${DBNAME}.sql.gz" $FILESIZE $SHA256
+	else
+	    log "  ERROR: Missing dump file: $OUTFILENAME"
+	    return 42
 	fi
     done
 
+    log "------- STARTING EVENT CLEANUP------"
     if [ "$COUNT" -ne 0 ]; then 
 	log "TMPDIR=$TMPDIR"
 	echo "START: $timeStamp" > $TMPDIR/00database2.meta
