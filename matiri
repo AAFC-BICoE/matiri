@@ -7,7 +7,7 @@
 # Apache v2 License
 #
 set -e
-readonly LOG=false
+readonly LOG=true
 
 readonly DEPENDENCIES=(tar xargs nproc date readlink)
 
@@ -16,10 +16,6 @@ readonly DEPENDENCIES=(tar xargs nproc date readlink)
 #
 # Root location of where backups stored: CHANGE THIS!!!
 readonly BASE_DESTINATION_DIR="/tmp/backups"
-#
-# Only one or none of these 2 can be set
-readonly EXCLUDE=(events)
-readonly INCLUDE=()
 
 export ERROR_MESSAGE=""
 
@@ -89,6 +85,7 @@ function init {
     log "check dependencies"
     check_dependencies ${DEPENDENCIES[@]}
     if [ ! $? ]; then
+	log "Dependencies not met ${DEPENDENCIES[@]}"
 	usage
     fi
     log "check dependencies done"
@@ -112,10 +109,27 @@ function init {
 function main {
     init
     handle_arguments
-    readonly MYSQL_USER=$(./mysql.sh user)
-    readonly MYSQL_HOST=$(./mysql.sh host)
-    readonly MYSQL_PASSWORD=$(./mysql.sh password)
-    readonly MYSQL_PORT=$(./mysql.sh port)
+
+    for i in {1..99}
+    do
+	# Always return to SCRIPT_DIR when loop restarts
+	cd $SCRIPT_DIR
+
+	# Checks to see if server $i's configuration exists. Breaks the loop if it isn't.
+	./mysql.sh $i test
+	local status=$?
+	if [ "$status" -eq "50" ]; then
+		log "No more servers found" 
+		break
+	fi
+
+    # Get MySQL Server configuration from mysql.sh
+    MYSQL_USER=$(./mysql.sh $i user)
+    MYSQL_HOST=$(./mysql.sh $i host)
+    MYSQL_PASSWORD=$(./mysql.sh $i password)
+    MYSQL_PORT=$(./mysql.sh $i port)
+    INCLUDE=($(./mysql.sh $i include))
+    EXCLUDE=($(./mysql.sh $i exclude))
 
     vc=$(verify_config)
     log "vc= -$vc-"
@@ -129,24 +143,15 @@ function main {
 
     mkdir -p "$DESTINATION_DIR"
 
-    readonly SQLITE_STATUS=$(sqlite_init "$DB_FILE")
-    BACKUP_ID=$(sqlite_get_next_backup_id $DB_FILE)
+    SQLITE_STATUS=$(sqlite_init "$DB_FILE")
+    BACKUP_ID=$(sqlite_get_next_backup_id "$DB_FILE")
     log "Record start of backup"
     sqlite3_start_backup "$DB_FILE" $BACKUP_ID $MYSQL_USER $MYSQL_HOST $MYSQL_PORT 
 
-    WANTED_DATABASES=()
-    if [ $# -ne 0 ] ; then
-	while test $# -gt 0
-	do
-	    WANTED_DATABASES+=("$1")
-	    shift
-	done
-    fi
+    DATE=$(date +%F)
 
-    readonly DATE=$(date +%F)
-
-    readonly DESTINATION_TMP="${DESTINATION_TMP_PREFIX}_${DATE}_${BACKUP_ID}"
-    readonly TMPDIR="${DESTINATION_DIR}/${DESTINATION_TMP}"
+    DESTINATION_TMP="${DESTINATION_TMP_PREFIX}_${DATE}_${BACKUP_ID}"
+    TMPDIR="${DESTINATION_DIR}/${DESTINATION_TMP}"
     mkdir -p $TMPDIR
 
     local tmpFile
@@ -162,10 +167,11 @@ function main {
 	FATAL_ERROR=$(cat $tmpFile)
 	FATAL_ERROR="[MySql error] ${FATAL_ERROR}"
 	log $FATAL_ERROR
-	sqlite3_fail_backup $DB_FILE $BACKUP_ID "${FATAL_ERROR}"
+	sqlite3_fail_backup "$DB_FILE" $BACKUP_ID "${FATAL_ERROR}"
 	rmdir $TMPDIR
 	rm $tmpFile
-	exit 42
+
+	continue
     fi
 
     COUNT=0
@@ -175,24 +181,24 @@ function main {
 
     log "Making database:id hash"
     #Make hash of database ID and database Name
-    DATABASE_ID=$(sqlite_get_next_database_backup_id $DB_FILE)
+    DATABASE_ID=$(sqlite_get_next_database_backup_id "$DB_FILE")
     log "START DATABASE_ID=${DATABASE_ID}"
     
     WANTED=()
     for DBNAME in ${DATABASES[@]}; do
-	log "Examining database: $DBNAME"
+	    log "Examining database: $DBNAME"
 
-	obl=$(onBackupList $DBNAME ${INCLUDE[@]})
-	onl=$(onDoNotBackupList $DBNAME ${EXCLUDE[@]})
-	shouldBackup=$(should_backup $obl $onl)
-	if [[ $shouldBackup == "true" ]]; then
-	    log "BACKUP: $DBNAME"
-	    ID_DATABASE+=( ["${DBNAME}"]="${DATABASE_ID}")
-	    DATABASE_ID=$((DATABASE_ID+1))
-	    WANTED+=($DBNAME)
-	else
-	    log "NOT TO BACKUP: $DBNAME"
-	fi
+        obl=$(onBackupList $DBNAME ${INCLUDE[@]})
+        onl=$(onDoNotBackupList $DBNAME ${EXCLUDE[@]})
+        shouldBackup=$(should_backup $obl $onl)
+        if [[ $shouldBackup == "true" ]]; then
+	        log "BACKUP: $DBNAME"
+            ID_DATABASE+=( ["${DBNAME}"]="${DATABASE_ID}")
+	        DATABASE_ID=$((DATABASE_ID+1))
+	        WANTED+=($DBNAME)
+	    else
+	        log "NOT TO BACKUP: $DBNAME"
+	    fi
     done
 
     ###
@@ -204,12 +210,19 @@ function main {
 	DB_COUNT=$((DB_COUNT+1))
 	log "   ------- STARTING BACKUP ${DB_COUNT}/${#WANTED[@]}------ DBNAME=${DBNAME}    DATABASE_ID=${DATABASE_ID} "
 	DATABASE_ID="${ID_DATABASE[$DBNAME]}"
-	OUTFILENAME=$TMPDIR/database__${DBNAME}.sql
+
+	DBDUMP_FILENAME="database__${MYSQL_HOST}_${MYSQL_PORT}_${DBNAME}.sql"
+	GZ_FILENAME=${DBDUMP_FILENAME}.gz
+	SHA_FILENAME=${GZ_FILENAME}.sha256
+	META_FILENAME=${GZ_FILENAME}.meta
+	
 	log "     ------- tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
-	deleteIfExists ${OUTFILENAME}.gz
-	deleteIfExists ${OUTFILENAME}.gz.sha256
-	deleteIfExists ${OUTFILENAME}.gz.meta
-	sqlite3_start_db_backup $DB_FILE $DATABASE_ID $BACKUP_ID $DBNAME
+	deleteIfExists "${TMPDIR}/${DBDUMP_FILENAME}"
+	deleteIfExists "${TMPDIR}/${GZ_FILENAME}"
+	deleteIfExists "${TMPDIR}/${SHA_FILENAME}"
+	deleteIfExists "${TMPDIR}/${META_FILENAME}"
+
+	sqlite3_start_db_backup "$DB_FILE" $DATABASE_ID $BACKUP_ID $DBNAME
         echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
 	sleep $INTER_DUMP_DELAY
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
@@ -223,14 +236,14 @@ function main {
 	DB_COUNT=$((DB_COUNT+1))
 	log "   ------- STARTING CLEANUP ${DB_COUNT}/${#WANTED[@]}------"
 	COUNT=$((COUNT+1))
-	OUTFILENAME=$TMPDIR/database__${DBNAME}.sql.gz
-	if [ -e $OUTFILENAME ]; then
-	    log "Get SHA256 for ${OUTFILENAME}"
-	    SHA256=$(get_sha 65  "${OUTFILENAME}.sha256")
-	    FILESIZE=$(stat -c%s "${OUTFILENAME}")
-	    sqlite3_end_db_backup $DB_FILE "${ID_DATABASE[$DBNAME]}" "database__${DBNAME}.sql.gz" $FILESIZE $SHA256
+
+	if [ -e "${TMPDIR}/${GZ_FILENAME}" ]; then
+	    log "Get SHA256 for ${TMPDIR}/${GZ_FILENAME}"
+	    SHA256=$(get_sha 65  "${TMPDIR}/${SHA_FILENAME}")
+	    FILESIZE=$(stat -c%s "${TMPDIR}/${GZ_FILENAME}")
+	    sqlite3_end_db_backup "$DB_FILE" "${ID_DATABASE[$DBNAME]}" "${GZ_FILENAME}" $FILESIZE $SHA256
 	else
-	    log "  ERROR: Missing dump file: $OUTFILENAME"
+	    log "  ERROR: Missing dump file: ${TMPDIR}/${GZ_FILENAME}"
 	    return 42
 	fi
     done
@@ -245,7 +258,7 @@ function main {
 	cd $DESTINATION_DIR
 	cp ${DESTINATION_TMP}/00database2.meta ${TMPDIR}.meta
 	chmod 400 ${TMPDIR}.meta
-	readonly ALL_DB_TAR=${DESTINATION_TMP}.tar
+	ALL_DB_TAR=${DESTINATION_TMP}.tar
 
 	tar cvf ${DESTINATION_TMP}.tar ${DESTINATION_TMP} > /dev/null
 	chmod 400 ${DESTINATION_TMP}.tar
@@ -271,7 +284,7 @@ function main {
     fi
     cp $DB_FILE $DB_FILE_COPY
     chmod 400 $DB_FILE_COPY
-
+    done
 }
 
 function handle_arguments {

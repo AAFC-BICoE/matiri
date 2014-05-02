@@ -126,7 +126,7 @@ function sqlite3_start_backup {
 	local HOST="$4"
 	local PORT="$5"
 	
-	readonly START_DATE=$(sqlite_date)
+	local START_DATE=$(sqlite_date)
 	SQL="insert into ${BACKUP_TABLE} (id, completed, host, port, user, start_time, end_time, bytes, sha256) VALUES (${PID}, $NOT_COMPLETED, \"${HOST}\", ${PORT}, \"${USER}\", datetime('now','localtime'), "0", 0, \"\"); "
 	sqlite_apply_sql "$DB_FILE" "$SQL"
     fi
@@ -150,7 +150,7 @@ function sqlite3_end_backup {
 	local BACKUP_FILE=$3
 	local SHA256="$4"
 	local FILESIZE="$5"
-	readonly END_DATE=$(sqlite_date)
+	local END_DATE=$(sqlite_date)
 	SQL="update ${BACKUP_TABLE} set completed=${COMPLETED}, end_time=datetime('now','localtime'), sha256=\"${SHA256}\", file=\"${BACKUP_FILE}\", bytes=${FILESIZE} where id=${PID};"
 	sqlite_apply_sql "$DB_FILE" "$SQL"
     fi

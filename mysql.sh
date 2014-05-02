@@ -11,17 +11,21 @@
 
 # First mysql server
 declare -A SERVER_1
-SERVER_1["MYSQL_USER"]="backups_user_1"
-SERVER_1["MYSQL_HOST"]=host_1
-SERVER_1["MYSQL_PASSWORD"]=password_1
+SERVER_1["MYSQL_USER"]=root
+SERVER_1["MYSQL_HOST"]=localhost
+SERVER_1["MYSQL_PASSWORD"]=
 SERVER_1["MYSQL_PORT"]=3306
+SERVER_1["INCLUDE"]="events"
+SERVER_1["EXCLUDE"]=""
 
 # Second MySQL Server
 declare -A SERVER_2
-SERVER_2["MYSQL_USER"]=backups_user_2
-SERVER_2["MYSQL_HOST"]=host_2
-SERVER_2["MYSQL_PASSWORD"]=password_2
-SERVER_2["MYSQL_PORT"]=3306
+SERVER_2["MYSQL_USER"]=root
+SERVER_2["MYSQL_HOST"]=localhost
+SERVER_2["MYSQL_PASSWORD"]=
+SERVER_2["MYSQL_PORT"]=3307
+SERVER_2["INCLUDE"]="events"
+SERVER_2["EXCLUDE"]=""
 
 
 if [ "$#" != "2" ]; then
@@ -35,12 +39,18 @@ MYSQL_USER="$SERVER_PTR[MYSQL_USER]"
 MYSQL_HOST="$SERVER_PTR[MYSQL_HOST]"
 MYSQL_PASSWORD="$SERVER_PTR[MYSQL_PASSWORD]"
 MYSQL_PORT="$SERVER_PTR[MYSQL_PORT]"
+MYSQL_INCLUDE="$SERVER_PTR[MYSQL_INCLUDE]"
+MYSQL_EXCLUDE="$SERVER_PTR[MYSQL_EXCLUDE]"
 
 # Ensure that the server definition exists by validating that it doesn't return empty
 SERVER_EXISTS="$SERVER_PTR[@]"
 if [[ ${!SERVER_EXISTS} == "" ]]; then
-	echo "Error: Server $1 is not defined." 1>&2
-	exit 42
+	if [ $2 == "test" ]; then
+		exit 1
+	else
+		echo "Error: Server $1 is not defined." 1>&2
+		exit 50
+	fi
 fi
 
 if [ "$2" == "user" ]; then
@@ -60,5 +70,16 @@ fi
 
 if [ "$2" == "port" ]; then
     echo ${!MYSQL_PORT}
+    exit;
+fi
+
+
+if [ "$2" == "include" ]; then
+    echo ${!MYSQL_INCLUDE}
+    exit;
+fi
+
+if [ "$2" == "exclude" ]; then
+    echo ${!MYSQL_EXCLUDE}
     exit;
 fi
