@@ -216,14 +216,14 @@ function main {
 	SHA_FILENAME=${GZ_FILENAME}.sha256
 	META_FILENAME=${GZ_FILENAME}.meta
 	
-	log "     ------- tmpDir=$TMPDIR tmpDumpFileName=$OUTFILENAME"
+	log "     ------- tmpDir=$TMPDIR tmpDumpFileName=$DBDUMP_FILENAME"
 	deleteIfExists "${TMPDIR}/${DBDUMP_FILENAME}"
 	deleteIfExists "${TMPDIR}/${GZ_FILENAME}"
 	deleteIfExists "${TMPDIR}/${SHA_FILENAME}"
 	deleteIfExists "${TMPDIR}/${META_FILENAME}"
 
 	sqlite3_start_db_backup "$DB_FILE" $DATABASE_ID $BACKUP_ID $DBNAME
-        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $OUTFILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
+        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $DBDUMP_FILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
 	sleep $INTER_DUMP_DELAY
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
