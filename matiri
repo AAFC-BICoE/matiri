@@ -152,7 +152,7 @@ function main {
 
     DESTINATION_TMP="${DESTINATION_TMP_PREFIX}_${DATE}_${BACKUP_ID}"
     TMPDIR="${DESTINATION_DIR}/${DESTINATION_TMP}"
-    mkdir -p $TMPDIR
+    mkdir -p "$TMPDIR"
 
     local tmpFile
     tmpFile=$(mktemp)
@@ -168,8 +168,8 @@ function main {
 	FATAL_ERROR="[MySql error] ${FATAL_ERROR}"
 	log $FATAL_ERROR
 	sqlite3_fail_backup "$DB_FILE" $BACKUP_ID "${FATAL_ERROR}"
-	rmdir $TMPDIR
-	rm $tmpFile
+	rmdir "$TMPDIR"
+	rm "$tmpFile"
 
 	continue
     fi
@@ -223,7 +223,7 @@ function main {
 	deleteIfExists "${TMPDIR}/${META_FILENAME}"
 
 	sqlite3_start_db_backup "$DB_FILE" $DATABASE_ID $BACKUP_ID $DBNAME
-        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $DBDUMP_FILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err" 
+        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME \"$TMPDIR/$DBDUMP_FILENAME\" \"${DESTINATION_DIR}/${DESTINATION_TMP}.err\"" 
 	sleep $INTER_DUMP_DELAY
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
@@ -255,21 +255,21 @@ function main {
 	timeStamp=$(date +%F%t%H:%M:%S%t%s)
 	echo "END: $timeStamp" >> $TMPDIR/00database2.meta
 
-	cd $DESTINATION_DIR
-	cp ${DESTINATION_TMP}/00database2.meta ${TMPDIR}.meta
-	chmod 400 ${TMPDIR}.meta
+	cd "$DESTINATION_DIR"
+	cp "${DESTINATION_TMP}/00database2.meta" "${TMPDIR}.meta"
+	chmod 400 "${TMPDIR}.meta"
 	ALL_DB_TAR=${DESTINATION_TMP}.tar
 
-	tar cvf ${DESTINATION_TMP}.tar ${DESTINATION_TMP} > /dev/null
-	chmod 400 ${DESTINATION_TMP}.tar
+	tar cvf "${DESTINATION_TMP}.tar" "${DESTINATION_TMP}" > /dev/null
+	chmod 400 "${DESTINATION_TMP}.tar"
 
-	sha256sum ${DESTINATION_TMP}.tar > ${DESTINATION_TMP}.tar.sha256
-	chmod 400 ${DESTINATION_TMP}.tar.sha256
+	sha256sum "${DESTINATION_TMP}.tar" > "${DESTINATION_TMP}.tar.sha256"
+	chmod 400 "${DESTINATION_TMP}.tar.sha256"
 
-	SHA256=$(get_sha 65 ${DESTINATION_TMP}.tar.sha256)
+	SHA256=$(get_sha 65 "${DESTINATION_TMP}.tar.sha256")
 	FILESIZE=$(stat -c%s "${DESTINATION_TMP}.tar")
 
-	rm -r ${DESTINATION_TMP}
+	rm -r "${DESTINATION_TMP}"
 
 	if sqlite_have_sqlite3; then
 	    log "INFO" "Write records of backup to database"
@@ -279,11 +279,11 @@ function main {
 	sqlite3_end_backup "$DB_FILE" $BACKUP_ID "NULL" "NULL" 0
     fi
 
-    if [ -e $DB_FILE_COPY ]; then
-	chmod 644 $DB_FILE_COPY
+    if [ -e "$DB_FILE_COPY" ]; then
+	chmod 644 "$DB_FILE_COPY"
     fi
-    cp $DB_FILE $DB_FILE_COPY
-    chmod 400 $DB_FILE_COPY
+    cp "$DB_FILE" "$DB_FILE_COPY"
+    chmod 400 "$DB_FILE_COPY"
     done
 }
 
@@ -294,10 +294,4 @@ function handle_arguments {
 ################
 main $@
 ################
-
-
-
-
-
-
 
