@@ -76,7 +76,7 @@ function sqlite_get_next_number {
 	local readonly COLUMN="$3"
 	local num=$(sqlite3 $DB "select max(${COLUMN}) from ${TABLE};")
 	if [[ $num -eq "" ]]; then
-	    echo "1"
+	    echo $1
 	    return
 	else
 	    echo $(($num+1))
