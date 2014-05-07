@@ -9,20 +9,26 @@
 #
 
 
+# Multiple server/port combinations are supported.
+# Declare a SERVER_ID hash, where ID starts at 1 and increments: declare -A SERVER_1
+# Specify the hash values for the following keys in the SERVER_ID hash: MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT, INCLUDE, EXCLUDE
+# NOTE: Defining MYSQL_HOST as "localhost" is known to cause issues with non-standard ports (other than 3306)
+# NOTE: Either INCLUDE or EXCLUDE are supported but not both
+
 # First mysql server
 declare -A SERVER_1
 SERVER_1["MYSQL_USER"]=root
-SERVER_1["MYSQL_HOST"]=localhost
-SERVER_1["MYSQL_PASSWORD"]=
+SERVER_1["MYSQL_HOST"]=127.0.0.1
+SERVER_1["MYSQL_PASSWORD"]=password
 SERVER_1["MYSQL_PORT"]=3306
-SERVER_1["INCLUDE"]="events"
-SERVER_1["EXCLUDE"]=""
+SERVER_1["INCLUDE"]="events" # List of databases to include
+SERVER_1["EXCLUDE"]=""	# List of databases to exclude
 
 # Second MySQL Server
 declare -A SERVER_2
 SERVER_2["MYSQL_USER"]=root
-SERVER_2["MYSQL_HOST"]=localhost
-SERVER_2["MYSQL_PASSWORD"]=
+SERVER_2["MYSQL_HOST"]=127.0.0.1
+SERVER_2["MYSQL_PASSWORD"]=password
 SERVER_2["MYSQL_PORT"]=3307
 SERVER_2["INCLUDE"]="events"
 SERVER_2["EXCLUDE"]=""

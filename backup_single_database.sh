@@ -33,11 +33,16 @@ function init {
 
 
 function main {
+    . ./util.sh
+
+    log "Running backup_single_database.sh $@" 
+
     if [ $# -ne 7 ]; then
+	echo "Invalid number of arguement" >&2
 	usage
 	exit $ERROR_USAGE_1
     fi
-    . ./util.sh
+
     init
  
     readonly DB_HOST="$1"
@@ -66,7 +71,7 @@ function main {
     deleteIfExists ${COMPRESSED_BACKUP_FILENAME}
 
     log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPRESSED_BACKUP_FILENAME"
-    { /bin/nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(/usr/bin/mysqldump \
+    { nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(mysqldump \
 	--add-locks \
 	--comments=0 \
 	--compact \
@@ -87,17 +92,19 @@ function main {
 	--skip-dump-date \
 	--triggers \
 	--user=${DB_USER} \
-	$DATABASE_NAME) <(echo "SET FOREIGN_KEY_CHECKS=1;") | /bin/nice /bin/gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "command failed"; exit 1; }
+	$DATABASE_NAME) <(echo "SET FOREIGN_KEY_CHECKS=1;") | nice gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "mysqldump command failed: exit code $?"; exit 1; }
 
+    log "Verifying GZip of $COMPRESSED_BACKUP_FILENAME"
     # Verify gzip OK
-    /bin/gzip --test $COMPRESSED_BACKUP_FILENAME
+    gzip --test $COMPRESSED_BACKUP_FILENAME
 
+    log "Creating sha256sum of $COMPRESSED_BACKUP_FILENAME"
     # Make sha256 of file
-    /usr/bin/sha256sum $COMPRESSED_BACKUP_FILENAME | sed 's, .*/, ,' > ${COMPRESSED_BACKUP_FILENAME}.sha256
+    sha256sum $COMPRESSED_BACKUP_FILENAME | sed 's, .*/, ,' > ${COMPRESSED_BACKUP_FILENAME}.sha256
 
     TIME_STAMP=$(date +%F%t%H:%M:%S%t%s)
     echo "END: $TIME_STAMP" >> ${BACKUP_FILE_NAME}.meta
-    }
+}
 
 
 ################

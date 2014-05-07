@@ -105,6 +105,29 @@ function init {
     . sqlite3.sh
 }
 
+function _get_meta_filename {
+	local SUFFIX=".meta"
+	echo "$1${SUFFIX}"
+}
+
+function _get_sha_filename {
+	local SUFFIX=".sha256"
+	echo "$1${SUFFIX}"
+}
+
+function _get_gz_filename {
+	local SUFFIX=".gz"
+	echo "$1${SUFFIX}"
+}
+
+function _get_dbdump_filename {
+	local HOST="$1"
+	local PORT="$2"
+	local DB="$3"
+	local PREFIX="database__"
+	local SUFFIX=".sql"
+	echo "${PREFIX}${HOST}_${PORT}_${DB}${SUFFIX}"
+}
 
 function main {
     init
@@ -145,12 +168,12 @@ function main {
 
     SQLITE_STATUS=$(sqlite_init "$DB_FILE")
     BACKUP_ID=$(sqlite_get_next_backup_id "$DB_FILE")
-    log "Record start of backup"
+    log "Record start of backup $BACKUP_ID"
     sqlite3_start_backup "$DB_FILE" $BACKUP_ID $MYSQL_USER $MYSQL_HOST $MYSQL_PORT 
 
     DATE=$(date +%F)
 
-    DESTINATION_TMP="${DESTINATION_TMP_PREFIX}_${DATE}_${BACKUP_ID}"
+    DESTINATION_TMP="${DESTINATION_TMP_PREFIX}_${DATE}_${BACKUP_ID}_${MYSQL_HOST}_${MYSQL_PORT}"
     TMPDIR="${DESTINATION_DIR}/${DESTINATION_TMP}"
     mkdir -p "$TMPDIR"
 
@@ -158,9 +181,9 @@ function main {
     tmpFile=$(mktemp)
     IFS=$'\n'
 
-    log "Connecting to mysql: host=${MYSQL_HOST} user=${MYSQL_USER}"
+    log "Connecting to mysql: host=${MYSQL_HOST} port=${MYSQL_PORT} user=${MYSQL_USER}"
     set +e
-    DATABASES=( $(${MYSQL_BIN} --defaults-file=${MYSQL_CONFIG} --host=${MYSQL_HOST} --user=${MYSQL_USER} --password=${MYSQL_PASSWORD} --skip-column-names < ${LIST_DATABASES} 2> $tmpFile) )
+    DATABASES=( $(${MYSQL_BIN} --defaults-file=${MYSQL_CONFIG} --host=${MYSQL_HOST} --port=${MYSQL_PORT} --user=${MYSQL_USER} --password=${MYSQL_PASSWORD} --skip-column-names < ${LIST_DATABASES} 2> $tmpFile) )
     set -e
 
     if [[ "${#DATABASES[@]}" -eq 0 && -z ${DATABASES[1]} ]]; then
@@ -194,7 +217,7 @@ function main {
         if [[ $shouldBackup == "true" ]]; then
 	        log "BACKUP: $DBNAME"
             ID_DATABASE+=( ["${DBNAME}"]="${DATABASE_ID}")
-	        DATABASE_ID=$((DATABASE_ID+1))
+	        ((DATABASE_ID++))
 	        WANTED+=($DBNAME)
 	    else
 	        log "NOT TO BACKUP: $DBNAME"
@@ -208,13 +231,14 @@ function main {
     DB_COUNT=0
     for DBNAME in ${WANTED[@]}; do
 	DB_COUNT=$((DB_COUNT+1))
-	log "   ------- STARTING BACKUP ${DB_COUNT}/${#WANTED[@]}------ DBNAME=${DBNAME}    DATABASE_ID=${DATABASE_ID} "
 	DATABASE_ID="${ID_DATABASE[$DBNAME]}"
 
-	DBDUMP_FILENAME="database__${MYSQL_HOST}_${MYSQL_PORT}_${DBNAME}.sql"
-	GZ_FILENAME=${DBDUMP_FILENAME}.gz
-	SHA_FILENAME=${GZ_FILENAME}.sha256
-	META_FILENAME=${GZ_FILENAME}.meta
+	log "   ------- STARTING BACKUP ${DB_COUNT}/${#WANTED[@]}------ DBNAME=${DBNAME}    DATABASE_ID=${DATABASE_ID} "
+
+	local DBDUMP_FILENAME=$(_get_dbdump_filename ${MYSQL_HOST} ${MYSQL_PORT} ${DBNAME})
+	local GZ_FILENAME=$(_get_gz_filename ${DBDUMP_FILENAME})
+	local SHA_FILENAME=$(_get_sha_filename ${GZ_FILENAME})
+	local META_FILENAME=$(_get_meta_filename ${GZ_FILENAME})
 	
 	log "     ------- tmpDir=$TMPDIR tmpDumpFileName=$DBDUMP_FILENAME"
 	deleteIfExists "${TMPDIR}/${DBDUMP_FILENAME}"
@@ -223,7 +247,7 @@ function main {
 	deleteIfExists "${TMPDIR}/${META_FILENAME}"
 
 	sqlite3_start_db_backup "$DB_FILE" $DATABASE_ID $BACKUP_ID $DBNAME
-        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME \"$TMPDIR/$DBDUMP_FILENAME\" \"${DESTINATION_DIR}/${DESTINATION_TMP}.err\"" 
+        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $TMPDIR/$DBDUMP_FILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err"
 	sleep $INTER_DUMP_DELAY
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {
@@ -234,14 +258,20 @@ function main {
     DB_COUNT=0
     for DBNAME in ${WANTED[@]}; do
 	DB_COUNT=$((DB_COUNT+1))
+	DATABASE_ID="${ID_DATABASE[$DBNAME]}"
 	log "   ------- STARTING CLEANUP ${DB_COUNT}/${#WANTED[@]}------"
 	COUNT=$((COUNT+1))
 
-	if [ -e "${TMPDIR}/${GZ_FILENAME}" ]; then
+	local DBDUMP_FILENAME=$(_get_dbdump_filename ${MYSQL_HOST} ${MYSQL_PORT} ${DBNAME})
+	local GZ_FILENAME=$(_get_gz_filename ${DBDUMP_FILENAME})
+	local SHA_FILENAME=$(_get_sha_filename ${GZ_FILENAME})
+	local META_FILENAME=$(_get_meta_filename ${GZ_FILENAME})
+
+	if [ -f "${TMPDIR}/${GZ_FILENAME}" ]; then
 	    log "Get SHA256 for ${TMPDIR}/${GZ_FILENAME}"
 	    SHA256=$(get_sha 65  "${TMPDIR}/${SHA_FILENAME}")
 	    FILESIZE=$(stat -c%s "${TMPDIR}/${GZ_FILENAME}")
-	    sqlite3_end_db_backup "$DB_FILE" "${ID_DATABASE[$DBNAME]}" "${GZ_FILENAME}" $FILESIZE $SHA256
+	    sqlite3_end_db_backup "$DB_FILE" $DATABASE_ID "${GZ_FILENAME}" $FILESIZE $SHA256
 	else
 	    log "  ERROR: Missing dump file: ${TMPDIR}/${GZ_FILENAME}"
 	    return 42
@@ -282,8 +312,11 @@ function main {
     if [ -e "$DB_FILE_COPY" ]; then
 	chmod 644 "$DB_FILE_COPY"
     fi
-    cp "$DB_FILE" "$DB_FILE_COPY"
-    chmod 400 "$DB_FILE_COPY"
+
+    # The following is supported only if sqlite3 exists
+    sqlite_backup_db "$DB_FILE" "$DB_FILE_COPY"
+
+    unset ID_DATABASE
     done
 }
 

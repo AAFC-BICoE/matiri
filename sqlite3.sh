@@ -41,6 +41,17 @@ function sqlite_init {
 }
 
 
+# $1=DBFile Source $2=DBFile Destination
+function sqlite_backup_db {
+	if sqlite_have_sqlite3; then
+		local readonly DB=$1
+		local readonly DB_DESTINATION=$2
+		log "Backing up DB File $DB to $DB_DESTINATION"
+		cp "$DB" "$DB_DESTINATION"
+		chmod 400 "$DB_DESTINATION"
+	fi
+}
+
 # $1=dbfile; $2=table name
 function sqlite_table_exists {
     if sqlite_have_sqlite3; then
@@ -74,13 +85,15 @@ function sqlite_get_next_number {
 	local readonly DB="$1"
 	local readonly TABLE="$2"
 	local readonly COLUMN="$3"
-	local num=$(sqlite3 $DB "select max(${COLUMN}) from ${TABLE};")
+	local num=$(sqlite3 $DB "select max(${COLUMN})+1 from ${TABLE};")
+
 	if [[ $num -eq "" ]]; then
 	    echo "1"
-	    return
+	    return 0
 	else
-	    echo $(($num+1))
-	    return
+	    echo ${num}
+	    log "Column: ${COLUMN}  Table: {$TABLE}  Next Value: ${num}"
+	    return 0
 	fi
     fi
     echo "1"
