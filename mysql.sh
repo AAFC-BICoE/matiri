@@ -33,7 +33,6 @@ SERVER_2["MYSQL_PORT"]=3307
 SERVER_2["INCLUDE"]="events"
 SERVER_2["EXCLUDE"]=""
 
-
 if [ "$#" != "2" ]; then
     echo "Error: expects two argument: server_id, ( user | host | password | port )" 1>&2
     exit 42
@@ -45,8 +44,8 @@ MYSQL_USER="$SERVER_PTR[MYSQL_USER]"
 MYSQL_HOST="$SERVER_PTR[MYSQL_HOST]"
 MYSQL_PASSWORD="$SERVER_PTR[MYSQL_PASSWORD]"
 MYSQL_PORT="$SERVER_PTR[MYSQL_PORT]"
-MYSQL_INCLUDE="$SERVER_PTR[MYSQL_INCLUDE]"
-MYSQL_EXCLUDE="$SERVER_PTR[MYSQL_EXCLUDE]"
+MYSQL_INCLUDE="$SERVER_PTR[INCLUDE]"
+MYSQL_EXCLUDE="$SERVER_PTR[EXCLUDE]"
 
 # Ensure that the server definition exists by validating that it doesn't return empty
 SERVER_EXISTS="$SERVER_PTR[@]"
