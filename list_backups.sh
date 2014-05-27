@@ -1,5 +1,5 @@
 #!/bin/bash
-# script to backup mysql databases one-by-one, then tar them together
+# Script to list backup events
 #
 # GNewton 2013.10.09
 #
@@ -19,7 +19,19 @@ cd $SCRIPT_DIR
 . util.sh
 . sqlite3.sh
 
-sqlite3 -separator " | " $1 "select id, host, end_time, bytes, file from backup where end_time >= \"2013-11\"  order by end_time;"
+function usage {
+	echo "Usage: $0 [sqlite_db]"
+	exit 1
+}
 
+function main {
+	if [[ $# -ne 1 ]]; then
+		usage
+	fi
 
+	sqlite3 -separator " | " $1 "select id, host, port, end_time, bytes, file from backup_event order by end_time;"
 
+	exit 0;
+}
+
+main $@

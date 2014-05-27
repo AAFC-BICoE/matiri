@@ -3,7 +3,8 @@
 * Parallel MySql backup script storing backup info in Sqlite3 database.
 
 **Features:**
-* **Parallel**: each database on the server to be backed up is done separately, in parallel (concurrency settable: default: 3)
+* **Multi-Server**: Multiple MySQL servers are supported whether they are co-located on the same or separate physical servers.
+* **Parallel**: Each database on the server to be backed up is done separately, in parallel (concurrency settable: default: 3)
 * **Compressed**: Each database backup compressed
 * **Checksummed**: SHA256 of each compressed backup file stored and the archive of all files
 * **Archived**: All database backups tar'ed together into single file
@@ -12,20 +13,20 @@
 
 MySql Credentials
 --------------------
-*matiri* invokes a script called `mysql.sh` (must be in same directory as *matiri* script) to obtain MySql server host, port number, userid and password.
-A default implementation is supplied but should be modified to be more secure.
+*matiri* invokes a script called `mysql.sh` (must be in same directory as *matiri* script) to obtain MySQL server host, port number, user, password, and databases to include/exclude.
+A default implementation is supplied but should be modified to be more secure.  Note that only include or exclude are allowed, but not both.
 
 Running
 ------------
-1. Alter the `mysql.sh` to have the right credentials
+1. Alter the `mysql.sh` script to include one or more host, port, user, password, and included or excluded databases
 2. Alter the `matiri` script to have the appropriate backup destination location directory: `$BASE_DESTINATION_DIR` default value=`/tmp/backups`
-3 Alter the *matiri* script to have the appropriate concurrency: `$CONCURRENCY_LEVEL`  default value=`3`	
+3. Alter the *matiri* script to have the appropriate concurrency: `$CONCURRENCY_LEVEL`  default value=`3`	
 4. Start *matiri*
 
 
 Directory Structure
 --------------------
-All backup files are grouped by month.
+All backup files are grouped by year and month.
     `$BASE_DESTINATION_DIR/YYYY/MM`
 
 Four files are produced:
@@ -62,7 +63,7 @@ Sqlite3 Database
 --------------------------
 Default sqlite location: `$BASE_DESTINATION_DIR/backups.sqlite3.db`
 
-* Each time *matiri* is run, an entry in the `'backup_event'` table is created.
+* Each time *matiri* is run, an entry in the `'backup_event'` table is created for each defined server (multiple MySQL servers = multiple backup events).
 * The record is added, indicating a backup_event was started, with the `'completed'` column set to `-999 `(not completed)
 * For each of the databases to be backed up:
     * A database record is added before the database backup starts, with the `backup_event` `id` as the forign key `'backup_id'`. The 'completed' column set to `-999` (not completed).

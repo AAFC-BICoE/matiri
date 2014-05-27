@@ -41,6 +41,17 @@ function sqlite_init {
 }
 
 
+# $1=DBFile Source $2=DBFile Destination
+function sqlite_backup_db {
+	if sqlite_have_sqlite3; then
+		local readonly DB=$1
+		local readonly DB_DESTINATION=$2
+		log "Backing up DB File $DB to $DB_DESTINATION"
+		cp "$DB" "$DB_DESTINATION"
+		chmod 400 "$DB_DESTINATION"
+	fi
+}
+
 # $1=dbfile; $2=table name
 function sqlite_table_exists {
     if sqlite_have_sqlite3; then
@@ -74,13 +85,15 @@ function sqlite_get_next_number {
 	local readonly DB="$1"
 	local readonly TABLE="$2"
 	local readonly COLUMN="$3"
-	local num=$(sqlite3 $DB "select max(${COLUMN}) from ${TABLE};")
+	local num=$(sqlite3 $DB "select max(${COLUMN})+1 from ${TABLE};")
+
 	if [[ $num -eq "" ]]; then
-	    echo $1
-	    return
+	    echo "1"
+	    return 0
 	else
-	    echo $(($num+1))
-	    return
+	    echo ${num}
+	    log "Column: ${COLUMN}  Table: {$TABLE}  Next Value: ${num}"
+	    return 0
 	fi
     fi
     echo "1"
@@ -126,9 +139,9 @@ function sqlite3_start_backup {
 	local HOST="$4"
 	local PORT="$5"
 	
-	readonly START_DATE=$(sqlite_date)
+	local START_DATE=$(sqlite_date)
 	SQL="insert into ${BACKUP_TABLE} (id, completed, host, port, user, start_time, end_time, bytes, sha256) VALUES (${PID}, $NOT_COMPLETED, \"${HOST}\", ${PORT}, \"${USER}\", datetime('now','localtime'), "0", 0, \"\"); "
-	sqlite_apply_sql "$DB_FILE" "$SQL"
+	sqlite_apply_sql "$DB" "$SQL"
     fi
 }
 
@@ -139,7 +152,7 @@ function sqlite3_fail_backup {
 	local ERROR_STRING="$3"
 	
 	SQL="update ${BACKUP_TABLE} set end_time=datetime('now','localtime'), error=\"${ERROR_STRING}\" where id=${PID};"
-	sqlite_apply_sql "$DB_FILE" "$SQL"
+	sqlite_apply_sql "$DB" "$SQL"
     fi
 }
 
@@ -150,9 +163,9 @@ function sqlite3_end_backup {
 	local BACKUP_FILE=$3
 	local SHA256="$4"
 	local FILESIZE="$5"
-	readonly END_DATE=$(sqlite_date)
+	local END_DATE=$(sqlite_date)
 	SQL="update ${BACKUP_TABLE} set completed=${COMPLETED}, end_time=datetime('now','localtime'), sha256=\"${SHA256}\", file=\"${BACKUP_FILE}\", bytes=${FILESIZE} where id=${PID};"
-	sqlite_apply_sql "$DB_FILE" "$SQL"
+	sqlite_apply_sql "$DB" "$SQL"
     fi
 }
 
@@ -164,7 +177,7 @@ function sqlite3_start_db_backup {
 	local BACKUP_ID="$3"
 	local DATABASE="$4"
 	local SQL="insert into ${DB_TABLE} (id, completed, backup_id, start_time, end_time, bytes, sha256, database) VALUES (${ID}, ${NOT_COMPLETED}, ${BACKUP_ID}, datetime('now','localtime'), ${NOT_COMPLETED}, 0, \"\", \"${DATABASE}\");"
-	sqlite_apply_sql "$DB_FILE" "$SQL"
+	sqlite_apply_sql "$DB" "$SQL"
     fi
 }
 
@@ -178,7 +191,7 @@ function sqlite3_end_db_backup {
 	#local SQL="update ${DB_TABLE} set completed=${COMPLETED}, end_time=CURRENT_TIMESTAMP, bytes=$BYTES, sha256=\"$SHA256\", file=\"${FILE}\" where id=\"${ID}\";"
 	local SQL="update ${DB_TABLE} set completed=${COMPLETED}, end_time=datetime('now','localtime'), bytes=$BYTES, sha256=\"$SHA256\", file=\"${FILE}\" where id=\"${ID}\";"
 	
-	sqlite_apply_sql "$DB_FILE" "$SQL"
+	sqlite_apply_sql "$DB" "$SQL"
     fi
 }
 
