@@ -3,37 +3,16 @@
 # matiri: backup mysql databases in parallel, then tar them together; record the info in sqlite3 db (if available)
 #
 # Author: GNewton 2013.10.09 glen.newton@gmail.com
-# Copyright 2013 Government of Canada and Glen Newton
+# Contributour: Iyad Kandalaft <iyad.kandalaft@agr.gc.ca>
+# Copyright 2016 Government of Canada and Glen Newton
 # Apache v2 License
 #
+
+MATIRIDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 set -e
-readonly LOG=true
-
-readonly DEPENDENCIES=(tar xargs nproc date readlink)
-
-############# Modifiable by command line (not yet: future feature) ###########
-# Right now you need to modify these directly  #
-#
-# Root location of where backups stored: CHANGE THIS!!!
-readonly BASE_DESTINATION_DIR="/tmp/backups"
 
 export ERROR_MESSAGE=""
-
-# This depends more on the server machine: too high and mysqld load goes very high on server;
-readonly CONCURRENCY_LEVEL=$(echo `nproc=$(expr $(nproc) + 1); echo $(expr $nproc / 2)`)
-
-readonly DESTINATION_TMP_PREFIX='mysql_backup'
-#################
-
-readonly DESTINATION_DIR=${BASE_DESTINATION_DIR}/$(date +%Y)/$(date +%m)
-
-readonly DB_FILE="$BASE_DESTINATION_DIR/backups.sqlite3.db"
-readonly DB_FILE_COPY="$DESTINATION_DIR/backups_copy.sqlite3.db"
-readonly MYSQL_BIN='/usr/bin/mysql'
-readonly LIST_DATABASES='list_mysql_databases_by_size.sql'
-timeStamp=$(date "+%F %H:%M:%S%t%s")
-
-readonly INTER_DUMP_DELAY=5
 
 function usage(){
     log
@@ -80,6 +59,7 @@ function init {
 
     # We move into the directory of where this script is to have all dependencies local
     cd $SCRIPT_DIR
+    . matiri_options
     . util.sh
 
     log "check dependencies"
@@ -247,7 +227,7 @@ function main {
 	deleteIfExists "${TMPDIR}/${META_FILENAME}"
 
 	sqlite3_start_db_backup "$DB_FILE" $DATABASE_ID $BACKUP_ID $DBNAME
-        echo "./backup_single_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $TMPDIR/$DBDUMP_FILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err"
+        echo "./backup_mysql_database.sh $MYSQL_HOST $MYSQL_PORT $MYSQL_USER $MYSQL_PASSWORD $DBNAME $TMPDIR/$DBDUMP_FILENAME ${DESTINATION_DIR}/${DESTINATION_TMP}.err"
 	sleep $INTER_DUMP_DELAY
     done| xargs --no-run-if-empty -I{} --max-procs $CONCURRENCY_LEVEL bash -c '
    {

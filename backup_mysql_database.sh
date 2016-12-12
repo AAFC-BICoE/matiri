@@ -1,15 +1,13 @@
 #!/bin/bash
 # script to backup a single mysql database
-# $1=name of mysql db
-# $2=destination filename for output
 # # GNewton 2013.10.31
+# # Iyad Kandalaft 2016.12.12
 #
 # Assumes in directory of (this) script
 # Stop if any error occurs
 set -e
 LOG="0"
 usage(){
-    #echo "Usage: $0 configFile host dbName backupFileName errorlogFileName"
     echo "Usage: $0 host userid password dbName backupDirectory backupFileName errorLogFilename"
 }
 
