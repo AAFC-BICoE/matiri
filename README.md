@@ -14,19 +14,19 @@
 MySql Credentials
 --------------------
 *matiri* invokes a script called `mysql.sh` (must be in same directory as *matiri* script) to obtain MySQL server host, port number, user, password, and databases to include/exclude.
-A default implementation is supplied but should be modified to be more secure.  Note that only include or exclude are allowed, but not both.
+A default implementation is supplied but should be modified to be more secure.  For obvious security reasons, this file should be in mode 700. 
+Note that only include or exclude are allowed, but not both.
 
 Running
 ------------
 1. Alter the `mysql.sh` script to include one or more host, port, user, password, and included or excluded databases
-2. Alter the `matiri` script to have the appropriate backup destination location directory: `$BASE_DESTINATION_DIR` default value=`/tmp/backups`
-3. Alter the *matiri* script to have the appropriate concurrency: `$CONCURRENCY_LEVEL`  default value=`3`	
+2. Alter `matiri_options` to modify backup destinations, concurrency, naming conventions`
 4. Start *matiri*
 
 
 Directory Structure
 --------------------
-All backup files are grouped by year and month.
+All backup files are grouped by year and month, which can be modified within matiri_options
     `$BASE_DESTINATION_DIR/YYYY/MM`
 
 Four files are produced:
@@ -34,7 +34,7 @@ Four files are produced:
 1. `mysql_backup_YYYY-MM-DD_ID.tar`
     * tar of database backup files (see below)
 2. `mysql_backup_YYYY-MM-DD_ID.tar.sha256`
-    *  sha256 of #1
+    *  SHA1 of #1
 3. `mysql_backup_YYYY-MM-DD_ID.meta`
     *  Info about the backup (redundant with Sqlite3 information)
 4. `mysql_backup_YYYY-MM-DD_ID.err`
@@ -47,17 +47,14 @@ The above (#1) `tar` file is made up of:
 
 1. database__DBNAME.sql.gz
     * gzip of mysqldump output
-2. database__DBNAME.sql.gz.sha256
-    * SHA256 of #1
-
-
+2. database__DBNAME.sql.gz.sha1
+    * SHA1 of #1
 
 Dependencies
 ----------------
 1. [Sqlite3](https://www.sqlite.org/sqlite.html)
 2. [mysqldump](https://dev.mysql.com/doc/refman/5.5/en/mysqldump.html) (Tested on mysqldump  Ver 10.13 Distrib 5.5.34, for Linux (x86_64))
-3. Standard Linux tools (tar, gzip, date, awk, xargs, sha256sum)
-
+3. Standard Linux tools (tar, gzip, date, awk, xargs, sha1sum)
 
 Sqlite3 Database 
 --------------------------
@@ -113,8 +110,6 @@ id|completed|backup_id|database|file|start_time|end_time|bytes|sha256|error
 sqlite> 
 ```
 
-
-
 ## TODOs
 0. Command line parameters for backup location and dynamically setting credentials (mysql.sh) script
 1. Better docs here and in scripts
@@ -123,6 +118,7 @@ sqlite>
 4. Scripts to both delete old backups files and remove entries from the Sqlite3 db (keep in sync)
 5. Simple web server app to peruse backup information in Sqlite3 DB
 6. Explanation of the Sqlite3 fields stored.
+7. Implement support for passwordless backups
 
 Name
 ---------------
