@@ -11,7 +11,7 @@ usage(){
     echo "Usage: $0 host userid password dbName backupDirectory backupFileName errorLogFilename"
 }
 
-readonly DEPENDENCIES=(nice cat mysqldump gzip sha256sum date)
+readonly DEPENDENCIES=(nice cat mysqldump gzip sha1sum date)
 
 #Error Codes
 readonly ERROR_USAGE_1=1
@@ -80,10 +80,11 @@ function main {
 	--no-autocommit \
 	--password=${DB_PASSWORD} \
 	--port=${DB_PORT} \
-	--routines \
 	--single-transaction \
 	--skip-dump-date \
+	--routines \
 	--triggers \
+	--events \
 	--user=${DB_USER} \
 	$DATABASE_NAME) <(echo "SET FOREIGN_KEY_CHECKS=1;") | nice gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "mysqldump command failed: exit code $?"; exit 1; }
 
@@ -103,10 +104,4 @@ function main {
 ################
 main $@
 ################
-
-
-
-
-
-
 
