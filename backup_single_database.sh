@@ -72,21 +72,16 @@ function main {
 
     log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPRESSED_BACKUP_FILENAME"
     { nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(mysqldump \
-	--add-locks \
+	--opt \
 	--comments=0 \
-	--compact \
 	--compress \
 	--default-character-set=${DEFAULT_CHARACTER_SET} \
-	--disable-keys \
-	--extended-insert \
 	--hex-blob \
 	--host=${DB_HOST}\
-    --max-allowed-packet=1G \
+    	--max-allowed-packet=1G \
 	--no-autocommit \
-	--no-create-db \
 	--password=${DB_PASSWORD} \
 	--port=${DB_PORT} \
-	--quick \
 	--routines \
 	--single-transaction \
 	--skip-dump-date \
@@ -100,7 +95,7 @@ function main {
 
     log "Creating sha256sum of $COMPRESSED_BACKUP_FILENAME"
     # Make sha256 of file
-    sha256sum $COMPRESSED_BACKUP_FILENAME | sed 's, .*/, ,' > ${COMPRESSED_BACKUP_FILENAME}.sha256
+    sha1sum $COMPRESSED_BACKUP_FILENAME | sed 's, .*/, ,' > ${COMPRESSED_BACKUP_FILENAME}.sha1
 
     TIME_STAMP=$(date +%F%t%H:%M:%S%t%s)
     echo "END: $TIME_STAMP" >> ${BACKUP_FILE_NAME}.meta
