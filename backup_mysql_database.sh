@@ -6,7 +6,7 @@
 # Assumes in directory of (this) script
 # Stop if any error occurs
 set -e
-LOG="0"
+LOG=true
 usage(){
     echo "Usage: $0 host userid password dbName backupDirectory backupFileName errorLogFilename"
 }
@@ -19,6 +19,7 @@ readonly ERROR_MYSQLDUMP_FAIL_2=2
 readonly ERROR_GZIP_TEST_FAIL_3=3
 readonly ERROR_SHA_CREATE_FAIL_4=4
 
+readonly MYSQL_DUMP="mysqldump"
 
 function init {
     log "check dependencies"
@@ -31,10 +32,11 @@ function init {
 
 
 function main {
+
     . ./util.sh
 
     log "Running backup_single_database.sh $@" 
-
+    echo "foo"
     if [ $# -ne 7 ]; then
 	echo "Invalid number of arguement" >&2
 	usage
@@ -57,8 +59,6 @@ function main {
 
     TIME_STAMP=$(date "+%F %H:%M:%S%t%s")
 
-    # Uncomment to get verbose 
-    #LOG=0
 
     readonly COMPRESSED_BACKUP_FILENAME=${BACKUP_FILE_NAME}.gz
 
@@ -68,8 +68,14 @@ function main {
     deleteIfExists ${BACKUP_FILE_NAME}
     deleteIfExists ${COMPRESSED_BACKUP_FILENAME}
 
+    readonly START_NO_KEYS="SET FOREIGN_KEY_CHECKS=0;"
+    readonly END_NO_KEYS="SET FOREIGN_KEY_CHECKS=0;"
+
+    QQ="$(echo $START_NO_KEYS $END_NO_KEYS| wc -c)"
+
+    
     log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPRESSED_BACKUP_FILENAME"
-    { nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(mysqldump \
+    { nice -19 cat <(echo "$START_NO_KEYS") <($MYSQL_DUMP \
 	--opt \
 	--comments=0 \
 	--compress \
@@ -86,8 +92,18 @@ function main {
 	--triggers \
 	--events \
 	--user=${DB_USER} \
-	$DATABASE_NAME) <(echo "SET FOREIGN_KEY_CHECKS=1;") | nice gzip  -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "mysqldump command failed: exit code $?"; exit 1; }
+	$DATABASE_NAME) <(echo "$END_NO_KEYS") | nice gzip -c > $COMPRESSED_BACKUP_FILENAME; } 2>> ${ERROR_LOG_FILE_NAME}|| { echo "mysqldump command failed: exit code $?"; exit 1; }
 
+
+    lenOut="$(gunzip -c $COMPRESSED_BACKUP_FILENAME| wc -c)"
+    echo $lenOut
+
+
+    if [ "$lenOut" -le "$QQ" ]; then
+	#backup file only contains the KEYS text thus some failure
+        exit 2
+    fi
+    
     log "Verifying GZip of $COMPRESSED_BACKUP_FILENAME"
     # Verify gzip OK
     gzip --test $COMPRESSED_BACKUP_FILENAME
