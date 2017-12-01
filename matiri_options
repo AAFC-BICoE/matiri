@@ -26,4 +26,7 @@ readonly MYSQL_BIN='/usr/bin/mysql'
 readonly LIST_DATABASES='list_mysql_databases_by_size.sql'
 timeStamp=$(date "+%F %H:%M:%S%t%s")
 
+readonly DB_FOLDER_MODE=750
+readonly DB_FILE_MODE=640
+
 readonly INTER_DUMP_DELAY=5

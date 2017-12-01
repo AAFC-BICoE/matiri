@@ -145,6 +145,7 @@ function main {
     log "Creating directory"
 
     mkdir -p "$DESTINATION_DIR"
+    chmod ${DB_FOLDER_MODE} "$DESTINATION_DIR"
 
     SQLITE_STATUS=$(sqlite_init "$DB_FILE")
     BACKUP_ID=$(sqlite_get_next_backup_id "$DB_FILE")
@@ -267,14 +268,14 @@ function main {
 
 	cd "$DESTINATION_DIR"
 	cp "${DESTINATION_TMP}/00database2.meta" "${TMPDIR}.meta"
-	chmod 400 "${TMPDIR}.meta"
+	chmod ${DB_FILE_MODE} "${TMPDIR}.meta"
 	ALL_DB_TAR=${DESTINATION_TMP}.tar
 
 	tar cvf "${DESTINATION_TMP}.tar" "${DESTINATION_TMP}" > /dev/null
-	chmod 400 "${DESTINATION_TMP}.tar"
+	chmod ${DB_FILE_MODE} "${DESTINATION_TMP}.tar"
 
 	sha256sum "${DESTINATION_TMP}.tar" > "${DESTINATION_TMP}.tar.sha256"
-	chmod 400 "${DESTINATION_TMP}.tar.sha256"
+	chmod ${DB_FILE_MODE} "${DESTINATION_TMP}.tar.sha256"
 
 	SHA256=$(get_sha 65 "${DESTINATION_TMP}.tar.sha256")
 	FILESIZE=$(stat -c%s "${DESTINATION_TMP}.tar")
@@ -290,7 +291,7 @@ function main {
     fi
 
     if [ -e "$DB_FILE_COPY" ]; then
-	chmod 644 "$DB_FILE_COPY"
+	chmod ${DB_FILE_MODE} "$DB_FILE_COPY"
     fi
 
     # The following is supported only if sqlite3 exists
