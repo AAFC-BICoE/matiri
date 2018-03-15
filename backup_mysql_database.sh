@@ -69,7 +69,7 @@ function main {
     deleteIfExists ${COMPRESSED_BACKUP_FILENAME}
 
     log "Starting backup of database: $DATABASE_NAME data to compressed file: $COMPRESSED_BACKUP_FILENAME"
-    { nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(mysqldump \
+    { nice -19 cat <(echo "SET FOREIGN_KEY_CHECKS=0;") <(${MYSQL_DUMP:-mysqldump} \
 	--opt \
 	--comments=0 \
 	--compress \

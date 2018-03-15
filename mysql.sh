@@ -32,6 +32,7 @@ SERVER_2["MYSQL_PASSWORD"]=password
 SERVER_2["MYSQL_PORT"]=3307
 SERVER_2["INCLUDE"]="events"
 SERVER_2["EXCLUDE"]=""
+SERVER_2["MYSQL_DUMP"]="ssh user@example.com mysqldump" # Example of ssh tunnelling
 
 if [ "$#" != "2" ]; then
     echo "Error: expects two argument: server_id, ( user | host | password | port )" 1>&2
@@ -46,6 +47,7 @@ MYSQL_PASSWORD="$SERVER_PTR[MYSQL_PASSWORD]"
 MYSQL_PORT="$SERVER_PTR[MYSQL_PORT]"
 MYSQL_INCLUDE="$SERVER_PTR[INCLUDE]"
 MYSQL_EXCLUDE="$SERVER_PTR[EXCLUDE]"
+MYSQL_DUMP="$SERVER_PTR[MYSQL_DUMP]"
 
 # Ensure that the server definition exists by validating that it doesn't return empty
 SERVER_EXISTS="$SERVER_PTR[@]"
