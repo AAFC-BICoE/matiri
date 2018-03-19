@@ -32,7 +32,7 @@ SERVER_2["MYSQL_PASSWORD"]=password
 SERVER_2["MYSQL_PORT"]=3307
 SERVER_2["INCLUDE"]="events"
 SERVER_2["EXCLUDE"]=""
-SERVER_2["MYSQL_DUMP"]="ssh user@example.com mysqldump" # Example of ssh tunnelling
+SERVER_2["MYSQL_DUMP"]="ssh -o 'BatchMode yes' user@example.com mysqldump" # Example of ssh tunnelling
 
 if [ "$#" != "2" ]; then
     echo "Error: expects two argument: server_id, ( user | host | password | port )" 1>&2
